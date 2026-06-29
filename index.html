@@ -245,7 +245,7 @@ function App() {
         <main className="main">
           {page==='dashboard'&&<Dashboard {...p} setPage={setPage}/>}
           {page==='sales'&&<Sales {...p}/>}
-          {page==='clients'&&<Clients {...p}/>}
+          {page==='clients'&&<Clients {...p} setSales={setSales}/>}
           {page==='reservations'&&<Reservations {...p}/>}
           {page==='timecard'&&<Timecard {...p}/>}
         </main>
@@ -396,13 +396,13 @@ function Timecard({staff,setStaff,timecards,setTimecards,clock}){
   </>);
 }
 
-function Clients({clients,setClients,staff}){
+function Clients({clients,setClients,staff,setSales}){
   const [search,setSearch]=useState('');
   const [selected,setSelected]=useState(null);
   const [modal,setModal]=useState(false);
   const [visitModal,setVisitModal]=useState(false);
   const [form,setForm]=useState({name:'',kana:'',phone:'',birthday:'',allergies:'',note:''});
-  const [visitForm,setVisitForm]=useState({date:todayStr(),menu:'',staffName:'',price:'',handover:'',memo:'',photos:[]});
+  const [visitForm,setVisitForm]=useState({date:todayStr(),menus:[],menu:'',staffName:'',price:'',handover:'',memo:'',photos:[]});
   const fileRef=useRef();
 
   const filtered=clients.filter(c=>c.name.includes(search)||(c.kana||'').includes(search)||(c.phone||'').includes(search));
@@ -410,7 +410,29 @@ function Clients({clients,setClients,staff}){
 
   const addClient=()=>{if(!form.name)return;const nc={...form,id:uid(),visits:[]};setClients(p=>[...p,nc]);setSelected(nc.id);setModal(false);setForm({name:'',kana:'',phone:'',birthday:'',allergies:'',note:''});};
   const delClient=id=>{setClients(p=>p.filter(c=>c.id!==id));setSelected(null);};
-  const addVisit=()=>{if(!visitForm.date)return;const v={...visitForm,id:uid()};setClients(p=>p.map(c=>c.id===selected?{...c,visits:[v,...(c.visits||[])]}:c));setVisitModal(false);setVisitForm({date:todayStr(),menu:'',staffName:'',price:'',handover:'',memo:'',photos:[]});};
+  const addVisit=()=>{
+    if(!visitForm.date)return;
+    const v={...visitForm,id:uid()};
+    // カルテに追加
+    const clientData=clients.find(c=>c.id===selected);
+    setClients(p=>p.map(c=>c.id===selected?{...c,visits:[v,...(c.visits||[])]}:c));
+    // 売上にも自動反映
+    if(visitForm.price&&Number(visitForm.price)>0){
+      const saleRecord={
+        id:uid(),
+        date:visitForm.date,
+        clientName:clientData?.name||'',
+        menu:visitForm.menu||'',
+        staffName:visitForm.staffName||'',
+        amount:Number(visitForm.price),
+        payment:'未収',
+        memo:'カルテより自動反映',
+      };
+      setSales(p=>[saleRecord,...p]);
+    }
+    setVisitModal(false);
+    setVisitForm({date:todayStr(),menus:[],menu:'',staffName:'',price:'',handover:'',memo:'',photos:[]});
+  };
   const delVisit=visitId=>setClients(p=>p.map(c=>c.id===selected?{...c,visits:c.visits.filter(v=>v.id!==visitId)}:c));
   const handlePhotos=e=>{Array.from(e.target.files).forEach(f=>{const r=new FileReader();r.onload=ev=>setVisitForm(p=>({...p,photos:[...(p.photos||[]),ev.target.result]}));r.readAsDataURL(f);});};
 
@@ -466,7 +488,19 @@ function Clients({clients,setClients,staff}){
     {visitModal&&<div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setVisitModal(false)}><div className="modal">
       <div className="modal-title">来店記録を追加</div>
       <div className="form-row cols2"><div className="form-group"><label className="form-label">来店日 *</label><input type="date" className="form-input" value={visitForm.date} onChange={e=>setVisitForm(p=>({...p,date:e.target.value}))}/></div><div className="form-group"><label className="form-label">担当</label><select className="form-select" value={visitForm.staffName} onChange={e=>setVisitForm(p=>({...p,staffName:e.target.value}))}><option value="">選択</option>{staff.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select></div></div>
-      <div className="form-row cols2"><div className="form-group"><label className="form-label">メニュー</label><select className="form-select" value={visitForm.menu} onChange={e=>setVisitForm(p=>({...p,menu:e.target.value}))}><option value="">選択</option>{MENUS.map(m=><option key={m} value={m}>{m}</option>)}</select></div><div className="form-group"><label className="form-label">料金</label><input type="number" className="form-input" placeholder="8000" value={visitForm.price} onChange={e=>setVisitForm(p=>({...p,price:e.target.value}))}/></div></div>
+      <div className="form-group" style={{marginBottom:16}}>
+        <label className="form-label">メニュー（複数選択可）</label>
+        <div style={{border:'1px solid #E8E2DA',borderRadius:8,padding:'10px 12px',background:'#FAF8F5',maxHeight:180,overflowY:'auto'}}>
+          {MENUS.map(m=><label key={m} style={{display:'flex',alignItems:'center',gap:8,padding:'4px 0',cursor:'pointer',fontSize:13}}>
+            <input type="checkbox" checked={(visitForm.menus||[]).includes(m)} onChange={e=>{const cur=visitForm.menus||[];const newMenus=e.target.checked?[...cur,m]:cur.filter(x=>x!==m);const total=newMenus.reduce((a,mn)=>a+(MENU_PRICES[mn]||0),0);setVisitForm(p=>({...p,menus:newMenus,menu:newMenus.join('・'),price:total>0?String(total):''}));}} style={{accentColor:'#C4788A',width:16,height:16}}/>
+            {m}
+          </label>)}
+        </div>
+      </div>
+      <div className="form-group" style={{marginBottom:16}}>
+        <label className="form-label">料金（自動入力・変更可）</label>
+        <input type="number" className="form-input" placeholder="自動入力されます" value={visitForm.price} onChange={e=>setVisitForm(p=>({...p,price:e.target.value}))}/>
+      </div>
       <div className="form-group" style={{marginBottom:16}}><label className="form-label">施術メモ</label><textarea className="form-textarea" placeholder="使用薬剤・施術内容など" value={visitForm.memo} onChange={e=>setVisitForm(p=>({...p,memo:e.target.value}))}/></div>
       <div className="form-group" style={{marginBottom:16}}><label className="form-label">📢 申し送り</label><textarea className="form-textarea" placeholder="次回担当者へのメモ" value={visitForm.handover} onChange={e=>setVisitForm(p=>({...p,handover:e.target.value}))}/></div>
       <div className="form-group"><label className="form-label">📸 施術写真</label><input type="file" ref={fileRef} accept="image/*" multiple style={{display:'none'}} onChange={handlePhotos}/><div className="upload-zone" onClick={()=>fileRef.current.click()}>タップして写真を選択（複数可）</div>{(visitForm.photos||[]).length>0&&<div className="photo-grid">{visitForm.photos.map((p,i)=><div key={i} className="photo-thumb"><img src={p} alt=""/><button className="photo-del" onClick={()=>setVisitForm(f=>({...f,photos:f.photos.filter((_,j)=>j!==i)}))}>×</button></div>)}</div>}</div>
