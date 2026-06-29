@@ -162,6 +162,30 @@ const MENUS = [
   'ウェルネスコンディショニングプログラム 60分（キャンペーン）',
   'その他',
 ];
+
+const MENU_PRICES = {
+  'エクソソームスキンケアプログラム 40分': 8800,
+  'ウェルネスリチャージプログラム 60分': 11800,
+  'ウェルネスリチャージプログラム 80分': 15840,
+  'ウェルネスリチャージプログラム 100分': 19800,
+  'ウェルネスコンディショニングプログラム 60分': 16500,
+  'ウェルネスコンディショニングプログラム 80分': 20900,
+  'プレミアムトータルケアコース 120分': 29800,
+  'クラシックエステコース 40分': 6480,
+  'クラシックエステコース 60分': 9600,
+  'クラシックエステコース 80分': 12640,
+  'クラシックエステコース 120分': 18720,
+  'クラシックエステコース 150分': 23250,
+  '漢方よもぎ蒸し（通常）': 5500,
+  '漢方よもぎ蒸し（会員様）': 4950,
+  '漢方よもぎ蒸し（初回お試し）': 4400,
+  'ヘッドスパ（オプション）20分': 3000,
+  '足つぼ・リフレクソロジー（オプション）20分': 3000,
+  'SANTEケア（オプション）20分': 3000,
+  '指名料': 500,
+  'ウェルネスコンディショニングプログラム 60分（キャンペーン）': 11000,
+  'その他': 0,
+};
 const PAYMENT = ['現金','カード','PayPay','LINE Pay','その他'];
 
 const load = key => { try { const r = window.storage.get(key); return r ? JSON.parse(r.value) : null; } catch { return null; } };
@@ -455,11 +479,11 @@ function Reservations({reservations,setReservations,sales,setSales,clients,staff
   const [modal,setModal]=useState(false);
   const [completeModal,setCompleteModal]=useState(null);
   const [filterDate,setFilterDate]=useState(todayStr());
-  const [form,setForm]=useState({date:todayStr(),time:'10:00',clientName:'',phone:'',menu:'',staffName:'',duration:'60',memo:'',status:'確定',price:''});
+  const [form,setForm]=useState({date:todayStr(),time:'10:00',clientName:'',phone:'',menus:[],menu:'',staffName:'',duration:'60',memo:'',status:'確定',price:''});
   const [completeForm,setCompleteForm]=useState({price:'',payment:'現金',memo:''});
 
   const filtered=reservations.filter(r=>r.date===filterDate).sort((a,b)=>a.time.localeCompare(b.time));
-  const add=()=>{if(!form.date||!form.clientName)return;setReservations(p=>[...p,{...form,id:uid()}]);setModal(false);setForm({date:todayStr(),time:'10:00',clientName:'',phone:'',menu:'',staffName:'',duration:'60',memo:'',status:'確定',price:''});};
+  const add=()=>{if(!form.date||!form.clientName)return;const menuStr=(form.menus||[]).join('・')||form.menu||'';setReservations(p=>[...p,{...form,id:uid(),menu:menuStr}]);setModal(false);setForm({date:todayStr(),time:'10:00',clientName:'',phone:'',menus:[],menu:'',staffName:'',duration:'60',memo:'',status:'確定',price:''});};
   const openComplete=r=>{setCompleteForm({price:r.price||'',payment:'現金',memo:''});setCompleteModal(r);};
   const confirmComplete=()=>{const r=completeModal;setReservations(p=>p.map(x=>x.id===r.id?{...x,status:'完了'}:x));setSales(p=>[{id:uid(),date:r.date,clientName:r.clientName,menu:r.menu,staffName:r.staffName,amount:Number(completeForm.price)||0,payment:completeForm.payment,memo:completeForm.memo},...p]);setCompleteModal(null);};
   const STATUS_STYLE={'確定':'badge-green','完了':'badge-gray','キャンセル':'badge-red'};
@@ -490,7 +514,7 @@ function Reservations({reservations,setReservations,sales,setSales,clients,staff
       <div className="modal-title">予約を追加</div>
       <div className="form-row cols2"><div className="form-group"><label className="form-label">日付 *</label><input type="date" className="form-input" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))}/></div><div className="form-group"><label className="form-label">時間</label><input type="time" className="form-input" value={form.time} onChange={e=>setForm(p=>({...p,time:e.target.value}))}/></div></div>
       <div className="form-row cols2"><div className="form-group"><label className="form-label">お客様名 *</label><input className="form-input" placeholder="山田 花子" value={form.clientName} onChange={e=>setForm(p=>({...p,clientName:e.target.value}))} list="cl-res"/><datalist id="cl-res">{clients.map(c=><option key={c.id} value={c.name}/>)}</datalist></div><div className="form-group"><label className="form-label">電話番号</label><input className="form-input" placeholder="090-0000-0000" value={form.phone} onChange={e=>setForm(p=>({...p,phone:e.target.value}))}/></div></div>
-      <div className="form-row cols3"><div className="form-group"><label className="form-label">メニュー</label><select className="form-select" value={form.menu} onChange={e=>setForm(p=>({...p,menu:e.target.value}))}><option value="">選択</option>{MENUS.map(m=><option key={m} value={m}>{m}</option>)}</select></div><div className="form-group"><label className="form-label">担当</label><select className="form-select" value={form.staffName} onChange={e=>setForm(p=>({...p,staffName:e.target.value}))}><option value="">選択</option>{staff.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select></div><div className="form-group"><label className="form-label">施術時間</label><select className="form-select" value={form.duration} onChange={e=>setForm(p=>({...p,duration:e.target.value}))}>{[30,45,60,90,120,150,180].map(d=><option key={d} value={d}>{d}分</option>)}</select></div></div>
+      <div className="form-row cols3"><div className="form-group"><label className="form-label">メニュー（複数選択可）</label><div style={{border:'1px solid #E8E2DA',borderRadius:8,padding:'8px 12px',background:'#FAF8F5',maxHeight:160,overflowY:'auto'}}>{MENUS.map(m=><label key={m} style={{display:'flex',alignItems:'center',gap:8,padding:'3px 0',cursor:'pointer',fontSize:12}}><input type="checkbox" checked={(form.menus||[]).includes(m)} onChange={e=>{const cur=form.menus||[];const newMenus=e.target.checked?[...cur,m]:cur.filter(x=>x!==m);const total=newMenus.reduce((a,mn)=>a+(MENU_PRICES[mn]||0),0);setForm(p=>({...p,menus:newMenus,menu:newMenus.join('・'),price:total>0?String(total):''}));}} style={{accentColor:'#C4788A'}}/>{m}</label>)}</div></div><div className="form-group"><label className="form-label">担当</label><select className="form-select" value={form.staffName} onChange={e=>setForm(p=>({...p,staffName:e.target.value}))}><option value="">選択</option>{staff.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select></div><div className="form-group"><label className="form-label">施術時間</label><select className="form-select" value={form.duration} onChange={e=>setForm(p=>({...p,duration:e.target.value}))}>{[30,45,60,90,120,150,180].map(d=><option key={d} value={d}>{d}分</option>)}</select></div></div>
       <div className="form-row cols2"><div className="form-group"><label className="form-label">目安金額</label><input type="number" className="form-input" placeholder="8000" value={form.price} onChange={e=>setForm(p=>({...p,price:e.target.value}))}/></div><div className="form-group"><label className="form-label">メモ</label><input className="form-input" placeholder="ご要望など" value={form.memo} onChange={e=>setForm(p=>({...p,memo:e.target.value}))}/></div></div>
       <div className="modal-actions"><button className="btn btn-ghost" onClick={()=>setModal(false)}>キャンセル</button><button className="btn btn-primary" onClick={add}>追加する</button></div>
     </div></div>}
@@ -508,10 +532,10 @@ function Reservations({reservations,setReservations,sales,setSales,clients,staff
 function Sales({sales,setSales,clients,staff}){
   const [modal,setModal]=useState(false);
   const [filterMonth,setFilterMonth]=useState(todayStr().slice(0,7));
-  const [form,setForm]=useState({date:todayStr(),clientName:'',menu:'',amount:'',payment:'現金',staffName:'',memo:''});
+  const [form,setForm]=useState({date:todayStr(),clientName:'',menus:[],menu:'',amount:'',payment:'現金',staffName:'',memo:''});
   const filtered=sales.filter(s=>s.date.startsWith(filterMonth)).sort((a,b)=>b.date.localeCompare(a.date));
   const total=filtered.reduce((a,b)=>a+Number(b.amount),0);
-  const add=()=>{if(!form.date||!form.amount)return;setSales(p=>[{...form,id:uid(),amount:Number(form.amount)},...p]);setModal(false);setForm({date:todayStr(),clientName:'',menu:'',amount:'',payment:'現金',staffName:'',memo:''});};
+  const add=()=>{if(!form.date||!form.amount)return;const menuStr=(form.menus||[]).join('・')||form.menu||'';setSales(p=>[{...form,id:uid(),amount:Number(form.amount),menu:menuStr},...p]);setModal(false);setForm({date:todayStr(),clientName:'',menus:[],menu:'',amount:'',payment:'現金',staffName:'',memo:''});};
 
   const today=new Date();
   const day=today.getDate();
@@ -606,8 +630,17 @@ function Sales({sales,setSales,clients,staff}){
       <div className="modal-title">売上を手動追加</div>
       <div className="form-row cols2"><div className="form-group"><label className="form-label">日付</label><input type="date" className="form-input" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))}/></div><div className="form-group"><label className="form-label">金額（円）*</label><input type="number" className="form-input" placeholder="8000" value={form.amount} onChange={e=>setForm(p=>({...p,amount:e.target.value}))}/></div></div>
       <div className="form-row cols2"><div className="form-group"><label className="form-label">お客様名</label><input className="form-input" placeholder="山田 花子" value={form.clientName} onChange={e=>setForm(p=>({...p,clientName:e.target.value}))} list="cl-s"/><datalist id="cl-s">{clients.map(c=><option key={c.id} value={c.name}/>)}</datalist></div><div className="form-group"><label className="form-label">担当</label><select className="form-select" value={form.staffName} onChange={e=>setForm(p=>({...p,staffName:e.target.value}))}><option value="">選択</option>{staff.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select></div></div>
-      <div className="form-row cols2"><div className="form-group"><label className="form-label">メニュー</label><select className="form-select" value={form.menu} onChange={e=>setForm(p=>({...p,menu:e.target.value}))}><option value="">選択</option>{MENUS.map(m=><option key={m} value={m}>{m}</option>)}</select></div><div className="form-group"><label className="form-label">支払方法</label><select className="form-select" value={form.payment} onChange={e=>setForm(p=>({...p,payment:e.target.value}))}>{PAYMENT.map(m=><option key={m} value={m}>{m}</option>)}</select></div></div>
-      <div className="form-group"><label className="form-label">メモ</label><textarea className="form-textarea" placeholder="備考" value={form.memo} onChange={e=>setForm(p=>({...p,memo:e.target.value}))}/></div>
+      <div className="form-group" style={{marginBottom:16}}>
+        <label className="form-label">メニュー（複数選択可）</label>
+        <div style={{border:'1px solid #E8E2DA',borderRadius:8,padding:'10px 12px',background:'#FAF8F5',maxHeight:200,overflowY:'auto'}}>
+          {MENUS.map(m=><label key={m} style={{display:'flex',alignItems:'center',gap:8,padding:'4px 0',cursor:'pointer',fontSize:13}}>
+            <input type="checkbox" checked={(form.menus||[]).includes(m)} onChange={e=>{const cur=form.menus||[];const newMenus=e.target.checked?[...cur,m]:cur.filter(x=>x!==m);const total=newMenus.reduce((a,mn)=>a+(MENU_PRICES[mn]||0),0);setForm(p=>({...p,menus:newMenus,amount:total>0?String(total):''}));}} style={{accentColor:'#C4788A',width:16,height:16}}/>
+            {m}
+          </label>)}
+        </div>
+      </div>
+      <div className="form-row cols2"><div className="form-group"><label className="form-label">支払方法</label><select className="form-select" value={form.payment} onChange={e=>setForm(p=>({...p,payment:e.target.value}))}>{PAYMENT.map(m=><option key={m} value={m}>{m}</option>)}</select></div>
+      <div className="form-group"><label className="form-label">メモ</label><input className="form-input" placeholder="備考" value={form.memo} onChange={e=>setForm(p=>({...p,memo:e.target.value}))}/></div></div>
       <div className="modal-actions"><button className="btn btn-ghost" onClick={()=>setModal(false)}>キャンセル</button><button className="btn btn-primary" onClick={add}>追加する</button></div>
     </div></div>}
   </>);
