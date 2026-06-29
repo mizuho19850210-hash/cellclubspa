@@ -261,6 +261,11 @@ function Timecard({staff,setStaff,timecards,setTimecards,clock}){
   const monthCards=staffId=>(timecards[staffId]||[]).filter(c=>c.date.startsWith(viewMonth));
 
   const addStaff=()=>{if(!newStaff.name)return;setStaff(p=>[...p,{...newStaff,id:uid()}]);setModal(false);setNewStaff({name:'',role:'',color:'#C4788A'});};
+  const delStaff=id=>{if(!confirm('このスタッフを削除しますか？'))return;setStaff(p=>p.filter(s=>s.id!==id));if(viewStaff===id)setViewStaff(null);};
+  const [editModal,setEditModal]=useState(false);
+  const [editStaff,setEditStaffData]=useState(null);
+  const openEdit=s=>{setEditStaffData({...s});setEditModal(true);};
+  const saveEdit=()=>{if(!editStaff.name)return;setStaff(p=>p.map(s=>s.id===editStaff.id?editStaff:s));setEditModal(false);};
 
   const clockDisplay=clock.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 
@@ -295,9 +300,15 @@ function Timecard({staff,setStaff,timecards,setTimecards,clock}){
     {tab==='history'&&<div style={{display:'flex',gap:20}}>
       <div style={{width:200,minWidth:200}}>
         <div className="card-title">スタッフ</div>
-        {staff.map(s=><div key={s.id} onClick={()=>setViewStaff(s.id)} style={{padding:'10px 14px',borderRadius:8,cursor:'pointer',marginBottom:4,background:viewStaff===s.id?'#F5E6EA':'transparent',border:`1px solid ${viewStaff===s.id?'#C4788A':'transparent'}`,display:'flex',alignItems:'center',gap:8}}>
-          <div style={{width:8,height:8,borderRadius:'50%',background:s.color||'#C4788A'}}/>
-          <div style={{flex:1}}><div style={{fontSize:13,fontWeight:500}}>{s.name}</div><div style={{fontSize:11,color:'#7A726A'}}>{s.role}</div></div>
+        {staff.map(s=><div key={s.id} style={{padding:'10px 14px',borderRadius:8,marginBottom:4,background:viewStaff===s.id?'#F5E6EA':'transparent',border:`1px solid ${viewStaff===s.id?'#C4788A':'#E8E2DA'}`}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',marginBottom:6}} onClick={()=>setViewStaff(s.id)}>
+            <div style={{width:8,height:8,borderRadius:'50%',background:s.color||'#C4788A',flexShrink:0}}/>
+            <div style={{flex:1}}><div style={{fontSize:13,fontWeight:500}}>{s.name}</div><div style={{fontSize:11,color:'#7A726A'}}>{s.role||'スタッフ'}</div></div>
+          </div>
+          <div style={{display:'flex',gap:4}}>
+            <button className="btn btn-ghost btn-sm" style={{flex:1,fontSize:11,padding:'4px 8px'}} onClick={e=>{e.stopPropagation();openEdit(s);}}>✏️ 編集</button>
+            <button className="btn btn-danger btn-sm" style={{flex:1,fontSize:11,padding:'4px 8px'}} onClick={e=>{e.stopPropagation();delStaff(s.id);}}>削除</button>
+          </div>
         </div>)}
       </div>
       <div style={{flex:1}}>
@@ -326,6 +337,15 @@ function Timecard({staff,setStaff,timecards,setTimecards,clock}){
       </div>
       <div className="form-group"><label className="form-label">カラー</label><div style={{display:'flex',gap:8,marginTop:4}}>{COLORS.map(c=><div key={c} onClick={()=>setNewStaff(p=>({...p,color:c}))} style={{width:28,height:28,borderRadius:'50%',background:c,cursor:'pointer',border:newStaff.color===c?`3px solid #2C2825`:'3px solid transparent'}}/>)}</div></div>
       <div className="modal-actions"><button className="btn btn-ghost" onClick={()=>setModal(false)}>キャンセル</button><button className="btn btn-primary" onClick={addStaff}>追加する</button></div>
+    </div></div>}
+    {editModal&&editStaff&&<div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setEditModal(false)}><div className="modal">
+      <div className="modal-title">スタッフを編集</div>
+      <div className="form-row cols2">
+        <div className="form-group"><label className="form-label">名前 *</label><input className="form-input" value={editStaff.name} onChange={e=>setEditStaffData(p=>({...p,name:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">役職</label><input className="form-input" value={editStaff.role||''} onChange={e=>setEditStaffData(p=>({...p,role:e.target.value}))}/></div>
+      </div>
+      <div className="form-group"><label className="form-label">カラー</label><div style={{display:'flex',gap:8,marginTop:4}}>{COLORS.map(c=><div key={c} onClick={()=>setEditStaffData(p=>({...p,color:c}))} style={{width:28,height:28,borderRadius:'50%',background:c,cursor:'pointer',border:editStaff.color===c?`3px solid #2C2825`:'3px solid transparent'}}/>)}</div></div>
+      <div className="modal-actions"><button className="btn btn-danger" onClick={()=>{delStaff(editStaff.id);setEditModal(false);}}>削除する</button><button className="btn btn-ghost" onClick={()=>setEditModal(false)}>キャンセル</button><button className="btn btn-primary" onClick={saveEdit}>保存する</button></div>
     </div></div>}
   </>);
 }
