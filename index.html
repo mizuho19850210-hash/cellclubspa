@@ -7,6 +7,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #FAF8F5; font-family: 'Inter', sans-serif; }
@@ -469,8 +470,84 @@ function Sales({sales,setSales,clients,staff}){
   const filtered=sales.filter(s=>s.date.startsWith(filterMonth)).sort((a,b)=>b.date.localeCompare(a.date));
   const total=filtered.reduce((a,b)=>a+Number(b.amount),0);
   const add=()=>{if(!form.date||!form.amount)return;setSales(p=>[{...form,id:uid(),amount:Number(form.amount)},...p]);setModal(false);setForm({date:todayStr(),clientName:'',menu:'',amount:'',payment:'現金',staffName:'',memo:''});};
+
+  const today=new Date();
+  const day=today.getDate();
+  const reportType=day<=10?'中間報告①（10日）':day<=20?'中間報告②（20日）':'最終報告（月末）';
+
+  const downloadReport=()=>{
+    const [y,m]=filterMonth.split('-').map(Number);
+    const monthLabel=`${y}年${m}月`;
+    const wb=XLSX.utils.book_new();
+
+    // シート1: 全売上実績
+    const s1=[
+      [`${monthLabel} 売上レポート　${reportType}`,'','','','',''],
+      ['作成日',new Date().toLocaleDateString('ja-JP'),'','','',''],
+      [''],
+      ['日付','お客様','メニュー','担当','支払方法','金額'],
+      ...filtered.map(s=>[s.date,s.clientName||'—',s.menu||'—',s.staffName||'—',s.payment,Number(s.amount)]),
+      [''],
+      ['合計','','','','',total],
+      ['件数',filtered.length,'','','',''],
+    ];
+    const ws1=XLSX.utils.aoa_to_sheet(s1);
+    ws1['!cols']=[{wch:12},{wch:14},{wch:16},{wch:12},{wch:10},{wch:10}];
+    XLSX.utils.book_append_sheet(wb,ws1,'全売上実績');
+
+    // シート2: スタッフ別売上
+    const staffMap={};
+    filtered.forEach(s=>{
+      const name=s.staffName||'未設定';
+      if(!staffMap[name])staffMap[name]={count:0,total:0};
+      staffMap[name].count++;
+      staffMap[name].total+=Number(s.amount);
+    });
+    const s2=[
+      [`${monthLabel} スタッフ別売上　${reportType}`,'',''],
+      [''],
+      ['スタッフ名','件数','売上合計'],
+      ...Object.entries(staffMap).sort((a,b)=>b[1].total-a[1].total).map(([name,v])=>[name,v.count,v.total]),
+      [''],
+      ['合計',filtered.length,total],
+    ];
+    const ws2=XLSX.utils.aoa_to_sheet(s2);
+    ws2['!cols']=[{wch:16},{wch:8},{wch:12}];
+    XLSX.utils.book_append_sheet(wb,ws2,'スタッフ別売上');
+
+    // シート3: コース別売上
+    const menuMap={};
+    filtered.forEach(s=>{
+      const menu=s.menu||'未設定';
+      if(!menuMap[menu])menuMap[menu]={count:0,total:0};
+      menuMap[menu].count++;
+      menuMap[menu].total+=Number(s.amount);
+    });
+    const s3=[
+      [`${monthLabel} コース別売上　${reportType}`,'',''],
+      [''],
+      ['コース名','件数','売上合計'],
+      ...Object.entries(menuMap).sort((a,b)=>b[1].total-a[1].total).map(([menu,v])=>[menu,v.count,v.total]),
+      [''],
+      ['合計',filtered.length,total],
+    ];
+    const ws3=XLSX.utils.aoa_to_sheet(s3);
+    ws3['!cols']=[{wch:20},{wch:8},{wch:12}];
+    XLSX.utils.book_append_sheet(wb,ws3,'コース別売上');
+
+    XLSX.writeFile(wb,`売上レポート_${monthLabel}_${reportType.split('（')[0]}.xlsx`);
+  };
+
   return(<>
-    <div className="header-row"><div><h2 className="page-title">売上・収入</h2><p className="page-sub">予約完了時に自動追加、手動入力も可能です</p></div><button className="btn btn-primary" onClick={()=>setModal(true)}>＋ 手動追加</button></div>
+    <div className="header-row"><div><h2 className="page-title">売上・収入</h2><p className="page-sub">予約完了時に自動追加、手動入力も可能です</p></div>
+      <div style={{display:'flex',gap:8}}>
+        <button className="btn btn-amber" onClick={downloadReport} style={{background:'#FBF0E0',color:'#D4913A',border:'1px solid #e8cfa0'}}>📊 Excelレポート作成</button>
+        <button className="btn btn-primary" onClick={()=>setModal(true)}>＋ 手動追加</button>
+      </div>
+    </div>
+    <div style={{background:'#FBF0E0',border:'1px solid #e8cfa0',borderRadius:8,padding:'10px 16px',marginBottom:16,fontSize:13,color:'#7a5a20'}}>
+      📋 本日は <strong>{reportType}</strong> の対象日です。Excelレポートをダウンロードして提出してください。
+    </div>
     <div style={{display:'flex',gap:12,marginBottom:20,alignItems:'center'}}>
       <input type="month" className="form-input" style={{width:160}} value={filterMonth} onChange={e=>setFilterMonth(e.target.value)}/>
       <div className="stat-card" style={{margin:0,padding:'12px 20px',display:'flex',gap:20,alignItems:'center'}}>
