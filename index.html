@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CellClubSpa 管理システム</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #FAF8F5; font-family: 'Inter', sans-serif; }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    // Simple storage using localStorage
+    window.storage = {
+      get: (key) => {
+        const v = localStorage.getItem(key);
+        return v ? { value: v } : null;
+      },
+      set: (key, value) => {
+        localStorage.setItem(key, value);
+        return { value };
+      },
+      delete: (key) => {
+        localStorage.removeItem(key);
+        return { deleted: true };
+      }
+    };
+  </script>
+  <script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef } = React;
+
+const C = {
+  bg: "#FAF8F5", surface: "#FFFFFF", border: "#E8E2DA",
+  rose: "#C4788A", roseDark: "#A85E70", roseLight: "#F5E6EA",
+  charcoal: "#2C2825", mid: "#7A726A", soft: "#B8AFA8",
+  green: "#6B9E7A", greenLight: "#EAF3EC",
+  amber: "#D4913A", amberLight: "#FBF0E0",
+  red: "#C0544A", redLight: "#FBEAE9",
+};
+
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#FAF8F5;font-family:'Inter',sans-serif;color:#2C2825;}
+.app{display:flex;height:100vh;overflow:hidden;}
+.sidebar{width:220px;min-width:220px;background:#2C2825;display:flex;flex-direction:column;}
+.sidebar-logo{padding:28px 24px 20px;border-bottom:1px solid rgba(255,255,255,.08);}
+.sidebar-logo h1{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:#fff;letter-spacing:.03em;}
+.sidebar-logo p{font-size:10px;color:#B8AFA8;letter-spacing:.12em;text-transform:uppercase;margin-top:2px;}
+.nav{flex:1;padding:16px 12px;display:flex;flex-direction:column;gap:2px;}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.55);font-size:13px;font-weight:500;text-align:left;transition:all .15s;}
+.nav-btn:hover{background:rgba(255,255,255,.07);color:#fff;}
+.nav-btn.active{background:#C4788A;color:#fff;}
+.nav-icon{font-size:16px;width:20px;text-align:center;}
+.sidebar-foot{padding:16px 24px;border-top:1px solid rgba(255,255,255,.08);}
+.main{flex:1;overflow-y:auto;padding:32px 36px;}
+.page-title{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:500;color:#2C2825;margin-bottom:4px;}
+.page-sub{font-size:13px;color:#7A726A;margin-bottom:28px;}
+.header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.card{background:#fff;border:1px solid #E8E2DA;border-radius:12px;padding:24px;margin-bottom:20px;}
+.card-title{font-size:13px;font-weight:600;color:#7A726A;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.stat-card{background:#fff;border:1px solid #E8E2DA;border-radius:12px;padding:20px;}
+.stat-label{font-size:11px;color:#7A726A;text-transform:uppercase;letter-spacing:.08em;}
+.stat-value{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:500;color:#2C2825;margin-top:4px;}
+.stat-unit{font-size:13px;color:#7A726A;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:500;border:none;cursor:pointer;transition:all .15s;}
+.btn-primary{background:#C4788A;color:#fff;}
+.btn-primary:hover{background:#A85E70;}
+.btn-ghost{background:none;border:1px solid #E8E2DA;color:#2C2825;}
+.btn-ghost:hover{background:#F5E6EA;}
+.btn-danger{background:#FBEAE9;color:#C0544A;border:1px solid #f0c0bb;}
+.btn-green{background:#EAF3EC;color:#6B9E7A;border:1px solid #c0dfc9;}
+.btn-green:hover{background:#d0ebd8;}
+.btn-sm{padding:6px 12px;font-size:12px;}
+.form-row{display:grid;gap:16px;margin-bottom:16px;}
+.form-row.cols2{grid-template-columns:1fr 1fr;}
+.form-row.cols3{grid-template-columns:1fr 1fr 1fr;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-label{font-size:12px;font-weight:500;color:#7A726A;}
+.form-input,.form-select,.form-textarea{padding:9px 12px;border:1px solid #E8E2DA;border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;color:#2C2825;background:#FAF8F5;outline:none;transition:border .15s;}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:#C4788A;background:#fff;}
+.form-textarea{resize:vertical;min-height:80px;}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;padding:10px 14px;font-size:11px;font-weight:600;color:#7A726A;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #E8E2DA;}
+td{padding:12px 14px;border-bottom:1px solid #E8E2DA;color:#2C2825;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#FAF8F5;}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge-green{background:#EAF3EC;color:#6B9E7A;}
+.badge-rose{background:#F5E6EA;color:#C4788A;}
+.badge-amber{background:#FBF0E0;color:#D4913A;}
+.badge-gray{background:#F0EDEA;color:#7A726A;}
+.badge-red{background:#FBEAE9;color:#C0544A;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,.2);}
+.modal-title{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:500;margin-bottom:24px;}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:24px;}
+.punch-btn{padding:16px 40px;border-radius:40px;font-size:16px;font-weight:600;border:none;cursor:pointer;transition:all .2s;letter-spacing:.04em;width:100%;}
+.punch-in{background:#6B9E7A;color:#fff;box-shadow:0 4px 16px rgba(107,158,122,.35);}
+.punch-in:hover{background:#5a8d6a;}
+.punch-out{background:#C4788A;color:#fff;box-shadow:0 4px 16px rgba(196,120,138,.35);}
+.punch-out:hover{background:#A85E70;}
+.punch-status{font-size:13px;font-weight:500;padding:6px 16px;border-radius:20px;}
+.status-in{background:#EAF3EC;color:#6B9E7A;}
+.status-out{background:#F0EDEA;color:#7A726A;}
+.clock-display{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:400;color:#2C2825;letter-spacing:.04em;text-align:center;}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-top:8px;}
+.photo-thumb{aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid #E8E2DA;position:relative;}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;}
+.photo-del{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.upload-zone{border:2px dashed #E8E2DA;border-radius:8px;padding:20px;text-align:center;color:#B8AFA8;font-size:13px;cursor:pointer;transition:all .15s;margin-top:8px;}
+.upload-zone:hover{border-color:#C4788A;color:#C4788A;background:#F5E6EA;}
+.client-row{padding:14px 16px;border:1px solid #E8E2DA;border-radius:10px;cursor:pointer;transition:all .15s;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+.client-row:hover{border-color:#C4788A;background:#F5E6EA;}
+.client-row.selected{border-color:#C4788A;background:#F5E6EA;}
+.visit-item{padding:16px 0;border-bottom:1px solid #E8E2DA;}
+.visit-item:last-child{border-bottom:none;}
+.notice-box{background:#FBF0E0;border:1px solid #e8cfa0;border-radius:8px;padding:12px 16px;font-size:13px;color:#7a5a20;margin-top:8px;}
+.notice-label{font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+.divider{border:none;border-top:1px solid #E8E2DA;margin:20px 0;}
+.tab-row{display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid #E8E2DA;}
+.tab{padding:10px 18px;font-size:13px;font-weight:500;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;color:#7A726A;transition:all .15s;margin-bottom:-1px;}
+.tab.active{color:#C4788A;border-bottom-color:#C4788A;}
+.res-complete-box{background:#EAF3EC;border:1px solid #c0dfc9;border-radius:10px;padding:16px;margin-top:8px;font-size:13px;color:#3a6b4a;}
+@media(max-width:900px){.stats-row{grid-template-columns:1fr 1fr;}.form-row.cols3{grid-template-columns:1fr 1fr;}.sidebar{width:180px;min-width:180px;}}
+`;
+
+const todayStr = () => new Date().toISOString().slice(0,10);
+const nowStr = () => new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
+const fmt = d => new Date(d).toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
+const fmtYen = n => '¥'+Number(n).toLocaleString();
+const uid = () => Math.random().toString(36).slice(2,9);
+const MENUS = ['ヘッドスパ','フェイシャル','ボディトリートメント','アロマ','カット','カラー','パーマ','トリートメント','その他'];
+const PAYMENT = ['現金','カード','PayPay','LINE Pay','その他'];
+
+const load = key => { try { const r = window.storage.get(key); return r ? JSON.parse(r.value) : null; } catch { return null; } };
+const save = (key,val) => { try { window.storage.set(key, JSON.stringify(val)); } catch {} };
+
+const DEMO_STAFF = [{id:'s1',name:'田中 美咲',role:'セラピスト',color:'#C4788A'},{id:'s2',name:'佐藤 愛',role:'アシスタント',color:'#6B9E7A'}];
+const DEMO_CLIENTS = [{id:'c1',name:'山田 花子',kana:'ヤマダ ハナコ',phone:'090-1234-5678',birthday:'1990-03-15',allergies:'なし',note:'アロマはラベンダー系がお好み。',visits:[{id:'v1',date:'2026-06-20',menu:'ヘッドスパ',staffName:'田中 美咲',price:8000,memo:'60分コース',handover:'次回は肩のコリが強いためボディも提案',photos:[]}]},{id:'c2',name:'鈴木 恵',kana:'スズキ メグミ',phone:'080-8765-4321',birthday:'1985-11-02',allergies:'敏感肌',note:'圧は強めがお好み。',visits:[]}];
+const DEMO_RESERVATIONS = [{id:'r1',date:todayStr(),time:'10:00',clientName:'山田 花子',phone:'090-1234-5678',menu:'ヘッドスパ',staffName:'田中 美咲',duration:'60',memo:'',status:'確定',price:'8000'},{id:'r2',date:todayStr(),time:'13:00',clientName:'鈴木 恵',phone:'080-8765-4321',menu:'ボディトリートメント',staffName:'佐藤 愛',duration:'90',memo:'圧強め希望',status:'確定',price:'12000'}];
+const DEMO_SALES = [{id:'sa1',date:todayStr().slice(0,7)+'-15',clientName:'山田 花子',menu:'ヘッドスパ',staffName:'田中 美咲',amount:8000,payment:'現金',memo:''},{id:'sa2',date:todayStr().slice(0,7)+'-10',clientName:'鈴木 恵',menu:'フェイシャル',staffName:'佐藤 愛',amount:10000,payment:'カード',memo:''}];
+
+function App() {
+  const [page,setPage]=useState('dashboard');
+  const [loaded,setLoaded]=useState(false);
+  const [sales,setSales]=useState([]);
+  const [clients,setClients]=useState([]);
+  const [reservations,setReservations]=useState([]);
+  const [staff,setStaff]=useState([]);
+  const [timecards,setTimecards]=useState({});
+  const [clock,setClock]=useState(new Date());
+
+  useEffect(()=>{
+    setSales(load('s2:sales')||DEMO_SALES);
+    setClients(load('s2:clients')||DEMO_CLIENTS);
+    setReservations(load('s2:reservations')||DEMO_RESERVATIONS);
+    setStaff(load('s2:staff')||DEMO_STAFF);
+    setTimecards(load('s2:timecards')||{});
+    setLoaded(true);
+  },[]);
+
+  useEffect(()=>{if(loaded)save('s2:sales',sales);},[sales,loaded]);
+  useEffect(()=>{if(loaded)save('s2:clients',clients);},[clients,loaded]);
+  useEffect(()=>{if(loaded)save('s2:reservations',reservations);},[reservations,loaded]);
+  useEffect(()=>{if(loaded)save('s2:staff',staff);},[staff,loaded]);
+  useEffect(()=>{if(loaded)save('s2:timecards',timecards);},[timecards,loaded]);
+  useEffect(()=>{const t=setInterval(()=>setClock(new Date()),1000);return()=>clearInterval(t);},[]);
+
+  if(!loaded) return React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',color:'#7A726A'}},'読み込み中…');
+
+  const nav=[{id:'dashboard',icon:'◈',label:'ダッシュボード'},{id:'sales',icon:'¥',label:'売上・収入'},{id:'clients',icon:'♡',label:'お客様カルテ'},{id:'reservations',icon:'◷',label:'予約管理'},{id:'timecard',icon:'⏱',label:'タイムカード'}];
+  const p={sales,setSales,clients,setClients,reservations,setReservations,staff,setStaff,timecards,setTimecards,clock};
+
+  return (
+    <>
+      <style>{css}</style>
+      <div className="app">
+        <aside className="sidebar">
+          <div className="sidebar-logo"><h1>CellClubSpa</h1><p>管理システム</p></div>
+          <nav className="nav">
+            {nav.map(n=>(
+              <button key={n.id} className={`nav-btn ${page===n.id?'active':''}`} onClick={()=>setPage(n.id)}>
+                <span className="nav-icon">{n.icon}</span>{n.label}
+              </button>
+            ))}
+          </nav>
+          <div className="sidebar-foot"><p style={{fontSize:11,color:'#B8AFA8'}}>{todayStr()}</p></div>
+        </aside>
+        <main className="main">
+          {page==='dashboard'&&<Dashboard {...p} setPage={setPage}/>}
+          {page==='sales'&&<Sales {...p}/>}
+          {page==='clients'&&<Clients {...p}/>}
+          {page==='reservations'&&<Reservations {...p}/>}
+          {page==='timecard'&&<Timecard {...p}/>}
+        </main>
+      </div>
+    </>
+  );
+}
+
+function Dashboard({sales,clients,reservations,staff,timecards,clock,setPage}){
+  const td=todayStr(),month=td.slice(0,7);
+  const monthSales=sales.filter(s=>s.date.startsWith(month));
+  const total=monthSales.reduce((a,b)=>a+Number(b.amount),0);
+  const todayRes=reservations.filter(r=>r.date===td&&r.status!=='キャンセル').sort((a,b)=>a.time.localeCompare(b.time));
+  const clockedIn=staff.filter(s=>{const cards=(timecards[s.id]||[]).filter(c=>c.date===td);const last=cards[cards.length-1];return last&&last.punchIn&&!last.punchOut;});
+  return(<>
+    <h2 className="page-title">ダッシュボード</h2>
+    <p className="page-sub">{fmt(td)}</p>
+    <div className="stats-row">
+      <div className="stat-card"><div className="stat-label">今月の売上</div><div className="stat-value">{fmtYen(total)}</div><div className="stat-unit">{monthSales.length}件</div></div>
+      <div className="stat-card"><div className="stat-label">本日の予約</div><div className="stat-value">{todayRes.length}</div><div className="stat-unit">件</div></div>
+      <div className="stat-card"><div className="stat-label">お客様数</div><div className="stat-value">{clients.length}</div><div className="stat-unit">登録済み</div></div>
+      <div className="stat-card"><div className="stat-label">出勤中</div><div className="stat-value">{clockedIn.length}</div><div className="stat-unit">名</div></div>
+    </div>
+    {clockedIn.length>0&&<div className="card"><div className="card-title">現在出勤中</div><div style={{display:'flex',gap:10,flexWrap:'wrap'}}>{clockedIn.map(s=>{const last=(timecards[s.id]||[]).filter(c=>c.date===td).slice(-1)[0];return(<div key={s.id} style={{background:'#EAF3EC',border:'1px solid #c0dfc9',borderRadius:8,padding:'10px 16px'}}><div style={{fontWeight:600,fontSize:14}}>{s.name}</div><div style={{fontSize:12,color:'#6B9E7A'}}>出勤 {last?.punchIn}</div></div>);})}</div></div>}
+    {todayRes.length>0&&<div className="card"><div className="card-title">本日の予約</div><div className="table-wrap"><table><thead><tr><th>時間</th><th>お客様</th><th>メニュー</th><th>担当</th><th>状態</th></tr></thead><tbody>{todayRes.map(r=><tr key={r.id}><td style={{fontWeight:700,fontFamily:"'Cormorant Garamond',serif",fontSize:16}}>{r.time}</td><td>{r.clientName}</td><td>{r.menu||'—'}</td><td>{r.staffName||'—'}</td><td><span className={`badge ${r.status==='完了'?'badge-gray':'badge-green'}`}>{r.status}</span></td></tr>)}</tbody></table></div></div>}
+    <div className="card"><div className="card-title">今月の売上グラフ</div><MiniChart sales={sales} month={month}/></div>
+  </>);
+}
+
+function MiniChart({sales,month}){
+  const days=Array.from({length:31},(_,i)=>{const d=String(i+1).padStart(2,'0');const total=sales.filter(s=>s.date===`${month}-${d}`).reduce((a,b)=>a+Number(b.amount),0);return{d:i+1,total};});
+  const max=Math.max(...days.map(x=>x.total),1);
+  return(<div style={{display:'flex',alignItems:'flex-end',gap:3,height:80}}>{days.map(({d,total})=><div key={d} title={`${d}日: ${fmtYen(total)}`} style={{flex:1,background:total>0?'#C4788A':'#E8E2DA',height:`${Math.max((total/max)*100,total>0?6:2)}%`,borderRadius:'3px 3px 0 0',minWidth:4}}/>)}</div>);
+}
+
+function Timecard({staff,setStaff,timecards,setTimecards,clock}){
+  const [tab,setTab]=useState('punch');
+  const [viewStaff,setViewStaff]=useState(staff[0]?.id||null);
+  const [viewMonth,setViewMonth]=useState(todayStr().slice(0,7));
+  const [modal,setModal]=useState(false);
+  const [newStaff,setNewStaff]=useState({name:'',role:'',color:'#C4788A'});
+  const COLORS=['#C4788A','#6B9E7A','#D4913A','#7A8EC4','#9B7AC4','#C47A6B'];
+  const td=todayStr();
+
+  const getStatus=staffId=>{const cards=(timecards[staffId]||[]).filter(c=>c.date===td);const last=cards[cards.length-1];if(!last)return'out';return last.punchIn&&!last.punchOut?'in':'out';};
+
+  const punch=staffId=>{
+    const now=nowStr(),status=getStatus(staffId);
+    setTimecards(prev=>{
+      const cards=[...(prev[staffId]||[])];
+      if(status==='out'){cards.push({id:uid(),date:td,punchIn:now,punchOut:null});}
+      else{const last=cards[cards.length-1];if(last&&!last.punchOut)last.punchOut=now;}
+      return{...prev,[staffId]:cards};
+    });
+  };
+
+  const calcHours=(punchIn,punchOut)=>{if(!punchIn||!punchOut)return null;const[h1,m1]=punchIn.split(':').map(Number);const[h2,m2]=punchOut.split(':').map(Number);const mins=(h2*60+m2)-(h1*60+m1);if(mins<=0)return null;return`${Math.floor(mins/60)}h${mins%60>0?String(mins%60).padStart(2,'0')+'m':''}`;};
+
+  const monthCards=staffId=>(timecards[staffId]||[]).filter(c=>c.date.startsWith(viewMonth));
+
+  const addStaff=()=>{if(!newStaff.name)return;setStaff(p=>[...p,{...newStaff,id:uid()}]);setModal(false);setNewStaff({name:'',role:'',color:'#C4788A'});};
+
+  const clockDisplay=clock.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+  return(<>
+    <div className="header-row"><div><h2 className="page-title">タイムカード</h2><p className="page-sub">出勤・退勤の打刻と勤務時間管理</p></div><button className="btn btn-primary" onClick={()=>setModal(true)}>＋ スタッフ追加</button></div>
+    <div className="tab-row"><button className={`tab ${tab==='punch'?'active':''}`} onClick={()=>setTab('punch')}>打刻</button><button className={`tab ${tab==='history'?'active':''}`} onClick={()=>setTab('history')}>履歴・集計</button></div>
+    {tab==='punch'&&<>
+      <div style={{textAlign:'center',marginBottom:28}}><div className="clock-display">{clockDisplay}</div><div style={{fontSize:13,color:'#7A726A',marginTop:4}}>{fmt(td)}</div></div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:16}}>
+        {staff.map(s=>{
+          const status=getStatus(s.id);
+          const todayCards=(timecards[s.id]||[]).filter(c=>c.date===td);
+          const last=todayCards[todayCards.length-1];
+          return(<div key={s.id} className="card" style={{padding:0,overflow:'hidden'}}>
+            <div style={{padding:'14px 18px',borderBottom:'1px solid #E8E2DA',display:'flex',alignItems:'center',gap:10}}>
+              <div style={{width:10,height:10,borderRadius:'50%',background:s.color||'#C4788A'}}/>
+              <div><div style={{fontWeight:600,fontSize:15}}>{s.name}</div><div style={{fontSize:11,color:'#7A726A'}}>{s.role||'スタッフ'}</div></div>
+              <span className={`punch-status ${status==='in'?'status-in':'status-out'}`} style={{marginLeft:'auto'}}>{status==='in'?'出勤中':'退勤済'}</span>
+            </div>
+            <div style={{padding:'16px 18px'}}>
+              {last&&<div style={{marginBottom:14,fontSize:13}}>
+                {last.punchIn&&<div style={{color:'#6B9E7A'}}>▶ 出勤 <strong>{last.punchIn}</strong></div>}
+                {last.punchOut&&<div style={{color:'#C4788A'}}>■ 退勤 <strong>{last.punchOut}</strong></div>}
+                {last.punchIn&&last.punchOut&&<div style={{color:'#7A726A',marginTop:4}}>勤務時間: <strong>{calcHours(last.punchIn,last.punchOut)}</strong></div>}
+              </div>}
+              <button className={`punch-btn ${status==='out'?'punch-in':'punch-out'}`} onClick={()=>punch(s.id)}>{status==='out'?'▶ 出勤打刻':'■ 退勤打刻'}</button>
+            </div>
+          </div>);
+        })}
+      </div>
+    </>}
+    {tab==='history'&&<div style={{display:'flex',gap:20}}>
+      <div style={{width:200,minWidth:200}}>
+        <div className="card-title">スタッフ</div>
+        {staff.map(s=><div key={s.id} onClick={()=>setViewStaff(s.id)} style={{padding:'10px 14px',borderRadius:8,cursor:'pointer',marginBottom:4,background:viewStaff===s.id?'#F5E6EA':'transparent',border:`1px solid ${viewStaff===s.id?'#C4788A':'transparent'}`,display:'flex',alignItems:'center',gap:8}}>
+          <div style={{width:8,height:8,borderRadius:'50%',background:s.color||'#C4788A'}}/>
+          <div style={{flex:1}}><div style={{fontSize:13,fontWeight:500}}>{s.name}</div><div style={{fontSize:11,color:'#7A726A'}}>{s.role}</div></div>
+        </div>)}
+      </div>
+      <div style={{flex:1}}>
+        <div style={{display:'flex',gap:12,marginBottom:20}}><input type="month" className="form-input" style={{width:160}} value={viewMonth} onChange={e=>setViewMonth(e.target.value)}/></div>
+        {viewStaff&&(()=>{
+          const cards=monthCards(viewStaff).sort((a,b)=>a.date.localeCompare(b.date));
+          const totalMins=cards.reduce((acc,c)=>{if(!c.punchIn||!c.punchOut)return acc;const[h1,m1]=c.punchIn.split(':').map(Number);const[h2,m2]=c.punchOut.split(':').map(Number);return acc+Math.max(0,(h2*60+m2)-(h1*60+m1));},0);
+          const completed=cards.filter(c=>c.punchIn&&c.punchOut);
+          return(<>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:20}}>
+              {[['出勤日数',`${completed.length}日`,'#6B9E7A'],['総勤務時間',`${Math.floor(totalMins/60)}h${totalMins%60>0?String(totalMins%60).padStart(2,'0')+'m':''}`,'#C4788A'],['平均勤務',completed.length?`${Math.floor(totalMins/completed.length/60)}h${Math.round((totalMins/completed.length)%60)}m`:'—','#D4913A']].map(([l,v,c])=><div key={l} className="stat-card" style={{padding:'14px 18px'}}><div className="stat-label">{l}</div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:28,color:c,marginTop:4}}>{v}</div></div>)}
+            </div>
+            <div className="card" style={{padding:0}}><div className="table-wrap"><table><thead><tr><th>日付</th><th>出勤時間</th><th>退勤時間</th><th>勤務時間</th></tr></thead><tbody>
+              {cards.length===0&&<tr><td colSpan={4} style={{textAlign:'center',color:'#B8AFA8',padding:32}}>記録がありません</td></tr>}
+              {cards.map(c=><tr key={c.id}><td>{fmt(c.date)}</td><td><span className="badge badge-green">{c.punchIn||'—'}</span></td><td><span className={c.punchOut?'badge badge-rose':'badge badge-gray'}>{c.punchOut||'出勤中'}</span></td><td style={{fontWeight:600}}>{calcHours(c.punchIn,c.punchOut)||'—'}</td></tr>)}
+            </tbody></table></div></div>
+          </>);
+        })()}
+      </div>
+    </div>}
+    {modal&&<div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setModal(false)}><div className="modal">
+      <div className="modal-title">スタッフを追加</div>
+      <div className="form-row cols2">
+        <div className="form-group"><label className="form-label">名前 *</label><input className="form-input" placeholder="鈴木 あい" value={newStaff.name} onChange={e=>setNewStaff(p=>({...p,name:e.target.value}))}/></div>
+        <div className="form-group"><label className="form-label">役職</label><input className="form-input" placeholder="セラピスト" value={newStaff.role} onChange={e=>setNewStaff(p=>({...p,role:e.target.value}))}/></div>
+      </div>
+      <div className="form-group"><label className="form-label">カラー</label><div style={{display:'flex',gap:8,marginTop:4}}>{COLORS.map(c=><div key={c} onClick={()=>setNewStaff(p=>({...p,color:c}))} style={{width:28,height:28,borderRadius:'50%',background:c,cursor:'pointer',border:newStaff.color===c?`3px solid #2C2825`:'3px solid transparent'}}/>)}</div></div>
+      <div className="modal-actions"><button className="btn btn-ghost" onClick={()=>setModal(false)}>キャンセル</button><button className="btn btn-primary" onClick={addStaff}>追加する</button></div>
+    </div></div>}
+  </>);
+}
+
+function Clients({clients,setClients,staff}){
+  const [search,setSearch]=useState('');
+  const [selected,setSelected]=useState(null);
+  const [modal,setModal]=useState(false);
+  const [visitModal,setVisitModal]=useState(false);
+  const [form,setForm]=useState({name:'',kana:'',phone:'',birthday:'',allergies:'',note:''});
+  const [visitForm,setVisitForm]=useState({date:todayStr(),menu:'',staffName:'',price:'',handover:'',memo:'',photos:[]});
+  const fileRef=useRef();
+
+  const filtered=clients.filter(c=>c.name.includes(search)||(c.kana||'').includes(search)||(c.phone||'').includes(search));
+  const clientData=selected?clients.find(c=>c.id===selected):null;
+
+  const addClient=()=>{if(!form.name)return;const nc={...form,id:uid(),visits:[]};setClients(p=>[...p,nc]);setSelected(nc.id);setModal(false);setForm({name:'',kana:'',phone:'',birthday:'',allergies:'',note:''});};
+  const delClient=id=>{setClients(p=>p.filter(c=>c.id!==id));setSelected(null);};
+  const addVisit=()=>{if(!visitForm.date)return;const v={...visitForm,id:uid()};setClients(p=>p.map(c=>c.id===selected?{...c,visits:[v,...(c.visits||[])]}:c));setVisitModal(false);setVisitForm({date:todayStr(),menu:'',staffName:'',price:'',handover:'',memo:'',photos:[]});};
+  const delVisit=visitId=>setClients(p=>p.map(c=>c.id===selected?{...c,visits:c.visits.filter(v=>v.id!==visitId)}:c));
+  const handlePhotos=e=>{Array.from(e.target.files).forEach(f=>{const r=new FileReader();r.onload=ev=>setVisitForm(p=>({...p,photos:[...(p.photos||[]),ev.target.result]}));r.readAsDataURL(f);});};
+
+  return(<>
+    <div className="header-row"><div><h2 className="page-title">お客様カルテ</h2><p className="page-sub">名前・フリガナ・電話番号で検索できます</p></div><button className="btn btn-primary" onClick={()=>setModal(true)}>＋ 新規登録</button></div>
+    <div style={{display:'flex',gap:20}}>
+      <div style={{width:280,minWidth:280}}>
+        <input className="form-input" style={{width:'100%',marginBottom:12}} placeholder="🔍 名前 / フリガナ / 電話番号" value={search} onChange={e=>setSearch(e.target.value)}/>
+        <div style={{fontSize:11,color:'#7A726A',marginBottom:8}}>{filtered.length}件</div>
+        <div style={{maxHeight:'calc(100vh - 240px)',overflowY:'auto'}}>
+          {filtered.map(c=><div key={c.id} className={`client-row ${selected===c.id?'selected':''}`} onClick={()=>setSelected(c.id)}><div><div style={{fontWeight:600,fontSize:14}}>{c.name}</div><div style={{fontSize:12,color:'#7A726A'}}>{c.kana&&`${c.kana}  `}{c.phone}</div><div style={{fontSize:11,color:'#B8AFA8',marginTop:2}}>{(c.visits||[]).length}回来店</div></div><span style={{color:'#B8AFA8'}}>›</span></div>)}
+          {filtered.length===0&&<p style={{color:'#B8AFA8',fontSize:13,textAlign:'center',marginTop:24}}>見つかりません</p>}
+        </div>
+      </div>
+      <div style={{flex:1}}>
+        {!clientData&&<div style={{textAlign:'center',color:'#B8AFA8',marginTop:60}}><div style={{fontSize:40,marginBottom:12}}>♡</div><p>お客様を選択するとカルテが表示されます</p></div>}
+        {clientData&&<div className="card">
+          <div className="header-row" style={{marginBottom:8}}>
+            <div><h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:500}}>{clientData.name}</h3><p style={{color:'#7A726A',fontSize:13}}>{clientData.kana}</p></div>
+            <div style={{display:'flex',gap:8}}><button className="btn btn-primary btn-sm" onClick={()=>setVisitModal(true)}>＋ 来店記録</button><button className="btn btn-danger btn-sm" onClick={()=>delClient(clientData.id)}>削除</button></div>
+          </div>
+          <hr className="divider"/>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16,marginBottom:16}}>
+            {[['電話番号',clientData.phone||'—'],['生年月日',clientData.birthday||'—'],['アレルギー',clientData.allergies||'なし']].map(([k,v])=><div key={k}><div style={{fontSize:11,color:'#7A726A',fontWeight:600,textTransform:'uppercase',letterSpacing:'.06em'}}>{k}</div><div style={{fontSize:14,marginTop:4}}>{v}</div></div>)}
+          </div>
+          {clientData.note&&<div className="notice-box" style={{background:'#F5E6EA',borderColor:'#e8c0cc',color:'#7a3050',marginBottom:16}}><div className="notice-label">お客様メモ</div>{clientData.note}</div>}
+          <hr className="divider"/>
+          <div className="card-title">来店履歴（{(clientData.visits||[]).length}回）</div>
+          {(clientData.visits||[]).length===0&&<p style={{color:'#B8AFA8',fontSize:13}}>まだ来店記録がありません</p>}
+          {(clientData.visits||[]).map(v=><div key={v.id} className="visit-item">
+            <div style={{display:'flex',justifyContent:'space-between'}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,color:'#7A726A',fontWeight:600,textTransform:'uppercase',letterSpacing:'.06em'}}>{fmt(v.date)} · {v.staffName||'担当未設定'}</div>
+                <div style={{fontSize:15,fontWeight:500,margin:'4px 0'}}>{v.menu||'メニュー未記入'}{v.price&&<span style={{color:'#C4788A',fontSize:13,fontWeight:400}}> · {fmtYen(v.price)}</span>}</div>
+                {v.memo&&<div style={{fontSize:13,color:'#7A726A'}}>📝 {v.memo}</div>}
+                {v.handover&&<div className="notice-box"><div className="notice-label">📢 申し送り</div>{v.handover}</div>}
+                {(v.photos||[]).length>0&&<div className="photo-grid">{v.photos.map((p,i)=><div key={i} className="photo-thumb"><img src={p} alt=""/></div>)}</div>}
+              </div>
+              <button className="btn btn-danger btn-sm" style={{marginLeft:12,flexShrink:0,alignSelf:'flex-start'}} onClick={()=>delVisit(v.id)}>削除</button>
+            </div>
+          </div>)}
+        </div>}
+      </div>
+    </div>
+    {modal&&<div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setModal(false)}><div className="modal">
+      <div className="modal-title">新規お客様登録</div>
+      <div className="form-row cols2"><div className="form-group"><label className="form-label">お名前 *</label><input className="form-input" placeholder="山田 花子" value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}/></div><div className="form-group"><label className="form-label">フリガナ</label><input className="form-input" placeholder="ヤマダ ハナコ" value={form.kana} onChange={e=>setForm(p=>({...p,kana:e.target.value}))}/></div></div>
+      <div className="form-row cols2"><div className="form-group"><label className="form-label">電話番号</label><input className="form-input" placeholder="090-0000-0000" value={form.phone} onChange={e=>setForm(p=>({...p,phone:e.target.value}))}/></div><div className="form-group"><label className="form-label">生年月日</label><input type="date" className="form-input" value={form.birthday} onChange={e=>setForm(p=>({...p,birthday:e.target.value}))}/></div></div>
+      <div className="form-group" style={{marginBottom:16}}><label className="form-label">アレルギー・注意事項</label><input className="form-input" placeholder="敏感肌 など" value={form.allergies} onChange={e=>setForm(p=>({...p,allergies:e.target.value}))}/></div>
+      <div className="form-group"><label className="form-label">お客様メモ</label><textarea className="form-textarea" placeholder="好み・カウンセリング内容など" value={form.note} onChange={e=>setForm(p=>({...p,note:e.target.value}))}/></div>
+      <div className="modal-actions"><button className="btn btn-ghost" onClick={()=>setModal(false)}>キャンセル</button><button className="btn btn-primary" onClick={addClient}>登録する</button></div>
+    </div></div>}
+    {visitModal&&<div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setVisitModal(false)}><div className="modal">
+      <div className="modal-title">来店記録を追加</div>
+      <div className="form-row cols2"><div className="form-group"><label className="form-label">来店日 *</label><input type="date" className="form-input" value={visitForm.date} onChange={e=>setVisitForm(p=>({...p,date:e.target.value}))}/></div><div className="form-group"><label className="form-label">担当</label><select className="form-select" value={visitForm.staffName} onChange={e=>setVisitForm(p=>({...p,staffName:e.target.value}))}><option value="">選択</option>{staff.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select></div></div>
+      <div className="form-row cols2"><div className="form-group"><label className="form-label">メニュー</label><select className="form-select" value={visitForm.menu} onChange={e=>setVisitForm(p=>({...p,menu:e.target.value}))}><option value="">選択</option>{MENUS.map(m=><option key={m} value={m}>{m}</option>)}</select></div><div className="form-group"><label className="form-label">料金</label><input type="number" className="form-input" placeholder="8000" value={visitForm.price} onChange={e=>setVisitForm(p=>({...p,price:e.target.value}))}/></div></div>
+      <div className="form-group" style={{marginBottom:16}}><label className="form-label">施術メモ</label><textarea className="form-textarea" placeholder="使用薬剤・施術内容など" value={visitForm.memo} onChange={e=>setVisitForm(p=>({...p,memo:e.target.value}))}/></div>
+      <div className="form-group" style={{marginBottom:16}}><label className="form-label">📢 申し送り</label><textarea className="form-textarea" placeholder="次回担当者へのメモ" value={visitForm.handover} onChange={e=>setVisitForm(p=>({...p,handover:e.target.value}))}/></div>
+      <div className="form-group"><label className="form-label">📸 施術写真</label><input type="file" ref={fileRef} accept="image/*" multiple style={{display:'none'}} onChange={handlePhotos}/><div className="upload-zone" onClick={()=>fileRef.current.click()}>タップして写真を選択（複数可）</div>{(visitForm.photos||[]).length>0&&<div className="photo-grid">{visitForm.photos.map((p,i)=><div key={i} className="photo-thumb"><img src={p} alt=""/><button className="photo-del" onClick={()=>setVisitForm(f=>({...f,photos:f.photos.filter((_,j)=>j!==i)}))}>×</button></div>)}</div>}</div>
+      <div className="modal-actions"><button className="btn btn-ghost" onClick={()=>setVisitModal(false)}>キャンセル</button><button className="btn btn-primary" onClick={addVisit}>記録する</button></div>
+    </div></div>}
+  </>);
+}
+
+function Reservations({reservations,setReservations,sales,setSales,clients,staff}){
+  const [modal,setModal]=useState(false);
+  const [completeModal,setCompleteModal]=useState(null);
+  const [filterDate,setFilterDate]=useState(todayStr());
+  const [form,setForm]=useState({date:todayStr(),time:'10:00',clientName:'',phone:'',menu:'',staffName:'',duration:'60',memo:'',status:'確定',price:''});
+  const [completeForm,setCompleteForm]=useState({price:'',payment:'現金',memo:''});
+
+  const filtered=reservations.filter(r=>r.date===filterDate).sort((a,b)=>a.time.localeCompare(b.time));
+  const add=()=>{if(!form.date||!form.clientName)return;setReservations(p=>[...p,{...form,id:uid()}]);setModal(false);setForm({date:todayStr(),time:'10:00',clientName:'',phone:'',menu:'',staffName:'',duration:'60',memo:'',status:'確定',price:''});};
+  const openComplete=r=>{setCompleteForm({price:r.price||'',payment:'現金',memo:''});setCompleteModal(r);};
+  const confirmComplete=()=>{const r=completeModal;setReservations(p=>p.map(x=>x.id===r.id?{...x,status:'完了'}:x));setSales(p=>[{id:uid(),date:r.date,clientName:r.clientName,menu:r.menu,staffName:r.staffName,amount:Number(completeForm.price)||0,payment:completeForm.payment,memo:completeForm.memo},...p]);setCompleteModal(null);};
+  const STATUS_STYLE={'確定':'badge-green','完了':'badge-gray','キャンセル':'badge-red'};
+
+  return(<>
+    <div className="header-row"><div><h2 className="page-title">予約管理</h2><p className="page-sub">完了ボタンで売上に自動反映されます</p></div><button className="btn btn-primary" onClick={()=>setModal(true)}>＋ 予約を追加</button></div>
+    <div style={{display:'flex',gap:12,marginBottom:20,alignItems:'center'}}>
+      <input type="date" className="form-input" style={{width:180}} value={filterDate} onChange={e=>setFilterDate(e.target.value)}/>
+      <span style={{fontSize:13,color:'#7A726A'}}>{filtered.length}件</span>
+      <span style={{fontSize:13,color:'#6B9E7A',fontWeight:600}}>完了: {filtered.filter(r=>r.status==='完了').length}件 / 確定: {filtered.filter(r=>r.status==='確定').length}件</span>
+    </div>
+    <div className="card" style={{padding:0}}><div className="table-wrap"><table><thead><tr><th>時間</th><th>お客様</th><th>電話</th><th>メニュー</th><th>担当</th><th>状態</th><th>操作</th></tr></thead><tbody>
+      {filtered.length===0&&<tr><td colSpan={7} style={{textAlign:'center',color:'#B8AFA8',padding:32}}>この日の予約はありません</td></tr>}
+      {filtered.map(r=><tr key={r.id}>
+        <td style={{fontWeight:700,fontFamily:"'Cormorant Garamond',serif",fontSize:16}}>{r.time}</td>
+        <td style={{fontWeight:500}}>{r.clientName}</td>
+        <td style={{color:'#7A726A',fontSize:12}}>{r.phone||'—'}</td>
+        <td>{r.menu||'—'}</td><td>{r.staffName||'—'}</td>
+        <td><span className={`badge ${STATUS_STYLE[r.status]||'badge-gray'}`}>{r.status}</span></td>
+        <td><div style={{display:'flex',gap:6}}>
+          {r.status==='確定'&&<button className="btn btn-green btn-sm" onClick={()=>openComplete(r)}>完了→売上</button>}
+          {r.status==='確定'&&<button className="btn btn-danger btn-sm" onClick={()=>setReservations(p=>p.map(x=>x.id===r.id?{...x,status:'キャンセル'}:x))}>ｷｬﾝｾﾙ</button>}
+          <button className="btn btn-danger btn-sm" onClick={()=>setReservations(p=>p.filter(x=>x.id!==r.id))}>削除</button>
+        </div></td>
+      </tr>)}
+    </tbody></table></div></div>
+    {modal&&<div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setModal(false)}><div className="modal">
+      <div className="modal-title">予約を追加</div>
+      <div className="form-row cols2"><div className="form-group"><label className="form-label">日付 *</label><input type="date" className="form-input" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))}/></div><div className="form-group"><label className="form-label">時間</label><input type="time" className="form-input" value={form.time} onChange={e=>setForm(p=>({...p,time:e.target.value}))}/></div></div>
+      <div className="form-row cols2"><div className="form-group"><label className="form-label">お客様名 *</label><input className="form-input" placeholder="山田 花子" value={form.clientName} onChange={e=>setForm(p=>({...p,clientName:e.target.value}))} list="cl-res"/><datalist id="cl-res">{clients.map(c=><option key={c.id} value={c.name}/>)}</datalist></div><div className="form-group"><label className="form-label">電話番号</label><input className="form-input" placeholder="090-0000-0000" value={form.phone} onChange={e=>setForm(p=>({...p,phone:e.target.value}))}/></div></div>
+      <div className="form-row cols3"><div className="form-group"><label className="form-label">メニュー</label><select className="form-select" value={form.menu} onChange={e=>setForm(p=>({...p,menu:e.target.value}))}><option value="">選択</option>{MENUS.map(m=><option key={m} value={m}>{m}</option>)}</select></div><div className="form-group"><label className="form-label">担当</label><select className="form-select" value={form.staffName} onChange={e=>setForm(p=>({...p,staffName:e.target.value}))}><option value="">選択</option>{staff.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select></div><div className="form-group"><label className="form-label">施術時間</label><select className="form-select" value={form.duration} onChange={e=>setForm(p=>({...p,duration:e.target.value}))}>{[30,45,60,90,120,150,180].map(d=><option key={d} value={d}>{d}分</option>)}</select></div></div>
+      <div className="form-row cols2"><div className="form-group"><label className="form-label">目安金額</label><input type="number" className="form-input" placeholder="8000" value={form.price} onChange={e=>setForm(p=>({...p,price:e.target.value}))}/></div><div className="form-group"><label className="form-label">メモ</label><input className="form-input" placeholder="ご要望など" value={form.memo} onChange={e=>setForm(p=>({...p,memo:e.target.value}))}/></div></div>
+      <div className="modal-actions"><button className="btn btn-ghost" onClick={()=>setModal(false)}>キャンセル</button><button className="btn btn-primary" onClick={add}>追加する</button></div>
+    </div></div>}
+    {completeModal&&<div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setCompleteModal(null)}><div className="modal">
+      <div className="modal-title">施術完了・売上に追加</div>
+      <div className="res-complete-box"><strong>{completeModal.clientName}</strong> さん · {completeModal.menu} · {completeModal.staffName}<br/>{completeModal.time} ～</div>
+      <div style={{height:20}}/>
+      <div className="form-row cols2"><div className="form-group"><label className="form-label">金額（円）*</label><input type="number" className="form-input" placeholder="8000" value={completeForm.price} onChange={e=>setCompleteForm(p=>({...p,price:e.target.value}))}/></div><div className="form-group"><label className="form-label">支払方法</label><select className="form-select" value={completeForm.payment} onChange={e=>setCompleteForm(p=>({...p,payment:e.target.value}))}>{PAYMENT.map(m=><option key={m} value={m}>{m}</option>)}</select></div></div>
+      <div className="form-group"><label className="form-label">メモ</label><input className="form-input" placeholder="備考" value={completeForm.memo} onChange={e=>setCompleteForm(p=>({...p,memo:e.target.value}))}/></div>
+      <div className="modal-actions"><button className="btn btn-ghost" onClick={()=>setCompleteModal(null)}>キャンセル</button><button className="btn btn-primary" onClick={confirmComplete}>完了・売上に追加する</button></div>
+    </div></div>}
+  </>);
+}
+
+function Sales({sales,setSales,clients,staff}){
+  const [modal,setModal]=useState(false);
+  const [filterMonth,setFilterMonth]=useState(todayStr().slice(0,7));
+  const [form,setForm]=useState({date:todayStr(),clientName:'',menu:'',amount:'',payment:'現金',staffName:'',memo:''});
+  const filtered=sales.filter(s=>s.date.startsWith(filterMonth)).sort((a,b)=>b.date.localeCompare(a.date));
+  const total=filtered.reduce((a,b)=>a+Number(b.amount),0);
+  const add=()=>{if(!form.date||!form.amount)return;setSales(p=>[{...form,id:uid(),amount:Number(form.amount)},...p]);setModal(false);setForm({date:todayStr(),clientName:'',menu:'',amount:'',payment:'現金',staffName:'',memo:''});};
+  return(<>
+    <div className="header-row"><div><h2 className="page-title">売上・収入</h2><p className="page-sub">予約完了時に自動追加、手動入力も可能です</p></div><button className="btn btn-primary" onClick={()=>setModal(true)}>＋ 手動追加</button></div>
+    <div style={{display:'flex',gap:12,marginBottom:20,alignItems:'center'}}>
+      <input type="month" className="form-input" style={{width:160}} value={filterMonth} onChange={e=>setFilterMonth(e.target.value)}/>
+      <div className="stat-card" style={{margin:0,padding:'12px 20px',display:'flex',gap:20,alignItems:'center'}}>
+        <div><div className="stat-label">合計</div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:500,color:'#C4788A'}}>{fmtYen(total)}</div></div>
+        <div style={{width:1,background:'#E8E2DA',alignSelf:'stretch'}}/>
+        <div><div className="stat-label">件数</div><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26}}>{filtered.length}</div></div>
+      </div>
+    </div>
+    <div className="card" style={{padding:0}}><div className="table-wrap"><table><thead><tr><th>日付</th><th>お客様</th><th>メニュー</th><th>担当</th><th>支払</th><th>金額</th><th></th></tr></thead><tbody>
+      {filtered.length===0&&<tr><td colSpan={7} style={{textAlign:'center',color:'#B8AFA8',padding:32}}>この月の売上データがありません</td></tr>}
+      {filtered.map(s=><tr key={s.id}><td>{s.date}</td><td>{s.clientName||'—'}</td><td>{s.menu||'—'}</td><td>{s.staffName||'—'}</td><td><span className="badge badge-gray">{s.payment}</span></td><td style={{fontWeight:600,color:'#C4788A'}}>{fmtYen(s.amount)}</td><td><button className="btn btn-danger btn-sm" onClick={()=>setSales(p=>p.filter(x=>x.id!==s.id))}>削除</button></td></tr>)}
+    </tbody></table></div></div>
+    {modal&&<div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setModal(false)}><div className="modal">
+      <div className="modal-title">売上を手動追加</div>
+      <div className="form-row cols2"><div className="form-group"><label className="form-label">日付</label><input type="date" className="form-input" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))}/></div><div className="form-group"><label className="form-label">金額（円）*</label><input type="number" className="form-input" placeholder="8000" value={form.amount} onChange={e=>setForm(p=>({...p,amount:e.target.value}))}/></div></div>
+      <div className="form-row cols2"><div className="form-group"><label className="form-label">お客様名</label><input className="form-input" placeholder="山田 花子" value={form.clientName} onChange={e=>setForm(p=>({...p,clientName:e.target.value}))} list="cl-s"/><datalist id="cl-s">{clients.map(c=><option key={c.id} value={c.name}/>)}</datalist></div><div className="form-group"><label className="form-label">担当</label><select className="form-select" value={form.staffName} onChange={e=>setForm(p=>({...p,staffName:e.target.value}))}><option value="">選択</option>{staff.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select></div></div>
+      <div className="form-row cols2"><div className="form-group"><label className="form-label">メニュー</label><select className="form-select" value={form.menu} onChange={e=>setForm(p=>({...p,menu:e.target.value}))}><option value="">選択</option>{MENUS.map(m=><option key={m} value={m}>{m}</option>)}</select></div><div className="form-group"><label className="form-label">支払方法</label><select className="form-select" value={form.payment} onChange={e=>setForm(p=>({...p,payment:e.target.value}))}>{PAYMENT.map(m=><option key={m} value={m}>{m}</option>)}</select></div></div>
+      <div className="form-group"><label className="form-label">メモ</label><textarea className="form-textarea" placeholder="備考" value={form.memo} onChange={e=>setForm(p=>({...p,memo:e.target.value}))}/></div>
+      <div className="modal-actions"><button className="btn btn-ghost" onClick={()=>setModal(false)}>キャンセル</button><button className="btn btn-primary" onClick={add}>追加する</button></div>
+    </div></div>}
+  </>);
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+  </script>
+</body>
+</html>
