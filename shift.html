@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CellClubSpa シフト希望</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #FAF8F5; font-family: 'Inter', sans-serif; color: #2C2825; min-height: 100vh; }
+
+    .header {
+      background: #2C2825; color: #fff;
+      padding: 20px 24px; display: flex; align-items: center; gap: 16px;
+    }
+    .header h1 { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600; }
+    .header p { font-size: 11px; color: #B8AFA8; letter-spacing: .1em; text-transform: uppercase; margin-top: 2px; }
+
+    .container { max-width: 680px; margin: 0 auto; padding: 24px 16px 80px; }
+
+    .card { background: #fff; border: 1px solid #E8E2DA; border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+    .card-title { font-size: 12px; font-weight: 600; color: #7A726A; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 14px; }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .form-label { font-size: 12px; font-weight: 500; color: #7A726A; }
+    .form-input, .form-select {
+      padding: 10px 14px; border: 1px solid #E8E2DA; border-radius: 8px;
+      font-size: 14px; font-family: 'Inter', sans-serif; color: #2C2825;
+      background: #FAF8F5; outline: none; width: 100%;
+    }
+    .form-input:focus, .form-select:focus { border-color: #C4788A; background: #fff; }
+
+    /* DAY CARD */
+    .day-card {
+      border: 1px solid #E8E2DA; border-radius: 10px; padding: 14px;
+      margin-bottom: 10px; transition: all .15s;
+    }
+    .day-card.holiday { background: #FBEAE9; border-color: #f0c0bb; }
+    .day-card.working { background: #EAF3EC; border-color: #c0dfc9; }
+    .day-card.undecided { background: #FAF8F5; }
+
+    .day-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .day-label { font-weight: 600; font-size: 14px; }
+    .day-week { font-size: 12px; color: #7A726A; margin-left: 6px; }
+    .day-week.sun { color: #C0544A; }
+    .day-week.sat { color: #4A7AC0; }
+
+    .time-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .time-group { display: flex; flex-direction: column; gap: 4px; }
+    .time-label { font-size: 11px; color: #7A726A; font-weight: 500; }
+
+    .status-btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .status-btn {
+      padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      border: 1.5px solid #E8E2DA; cursor: pointer; background: #fff; color: #7A726A;
+      transition: all .15s;
+    }
+    .status-btn.active-work { background: #EAF3EC; border-color: #6B9E7A; color: #6B9E7A; }
+    .status-btn.active-off { background: #FBEAE9; border-color: #C0544A; color: #C0544A; }
+    .status-btn.active-undecided { background: #FBF0E0; border-color: #D4913A; color: #D4913A; }
+
+    /* BOTTOM BTN */
+    .bottom-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #fff; border-top: 1px solid #E8E2DA;
+      padding: 14px 20px; display: flex; gap: 10px;
+    }
+    .btn-dl {
+      flex: 1; padding: 14px; border-radius: 10px; font-size: 15px; font-weight: 600;
+      border: none; cursor: pointer; background: #C4788A; color: #fff; transition: all .15s;
+    }
+    .btn-dl:hover { background: #A85E70; }
+    .btn-reset {
+      padding: 14px 20px; border-radius: 10px; font-size: 14px; font-weight: 500;
+      border: 1px solid #E8E2DA; cursor: pointer; background: #fff; color: #7A726A;
+    }
+
+    .notice {
+      background: #FBF0E0; border: 1px solid #e8cfa0; border-radius: 8px;
+      padding: 12px 16px; font-size: 13px; color: #7a5a20; margin-bottom: 16px;
+    }
+
+    select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A726A' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>CellClubSpa</h1>
+    <p>シフト希望フォーム</p>
+  </div>
+</div>
+
+<div class="container">
+  <!-- 名前・月 -->
+  <div class="card">
+    <div class="card-title">基本情報</div>
+    <div class="form-group">
+      <label class="form-label">スタッフ名 *</label>
+      <input type="text" id="staffName" class="form-input" placeholder="例：田中 美咲" />
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label class="form-label">対象月</label>
+      <input type="month" id="targetMonth" class="form-input" />
+    </div>
+  </div>
+
+  <div class="notice">
+    📌 各日付の「出勤」「休み」「未定」を選んでください。出勤の場合は出勤・退勤時間も選んでください。
+  </div>
+
+  <!-- 日付一覧 -->
+  <div id="dayList"></div>
+</div>
+
+<div id="sending-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:32px 40px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+    <div style="font-size:40px;margin-bottom:12px;">📤</div>
+    <div style="font-size:16px;font-weight:600;color:#2C2825;" id="send-msg">送信中...</div>
+  </div>
+</div>
+
+<div class="bottom-bar">
+  <button class="btn-reset" onclick="resetAll()">リセット</button>
+  <button class="btn-dl" style="background:#6B9E7A;flex:1.2;" onclick="sendShift()">📤 送信する</button>
+  <button class="btn-dl" style="flex:0.8;font-size:13px;" onclick="downloadExcel()">📥 Excel</button>
+</div>
+
+<script>
+const WEEKS = ['日','月','火','水','木','金','土'];
+const HOURS = ['10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00'];
+
+// state: { date: { status: 'work'|'off'|'undecided', start: '10:00', end: '19:00' } }
+let state = {};
+
+function getNextMonth() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 1);
+}
+
+function initMonth(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const days = new Date(y, m, 0).getDate();
+  state = {};
+  for (let d = 1; d <= days; d++) {
+    const key = `${ym}-${String(d).padStart(2,'0')}`;
+    state[key] = { status: 'undecided', start: '10:00', end: '22:00' };
+  }
+  renderDays(ym);
+}
+
+function renderDays(ym) {
+  const list = document.getElementById('dayList');
+  list.innerHTML = '';
+  Object.keys(state).sort().forEach(dateKey => {
+    const d = new Date(dateKey + 'T00:00:00');
+    const day = d.getDate();
+    const week = d.getDay();
+    const s = state[dateKey];
+    const weekLabel = WEEKS[week];
+    const isSun = week === 0, isSat = week === 6;
+    const cardClass = s.status === 'off' ? 'holiday' : s.status === 'work' ? 'working' : 'undecided';
+
+    const div = document.createElement('div');
+    div.className = `day-card ${cardClass}`;
+    div.id = `day-${dateKey}`;
+    div.innerHTML = `
+      <div class="day-header">
+        <div>
+          <span class="day-label">${day}日</span>
+          <span class="day-week ${isSun?'sun':isSat?'sat':''}">(${weekLabel})</span>
+        </div>
+      </div>
+      <div class="status-btn-row" style="margin-bottom:${s.status==='work'?'12px':'0'}">
+        <button class="status-btn ${s.status==='work'?'active-work':''}" onclick="setStatus('${dateKey}','work')">出勤</button>
+        <button class="status-btn ${s.status==='off'?'active-off':''}" onclick="setStatus('${dateKey}','off')">休み</button>
+        <button class="status-btn ${s.status==='undecided'?'active-undecided':''}" onclick="setStatus('${dateKey}','undecided')">未定</button>
+      </div>
+      ${s.status === 'work' ? `
+      <div class="time-row">
+        <div class="time-group">
+          <div class="time-label">出勤時間</div>
+          <select class="form-select" onchange="setTime('${dateKey}','start',this.value)">
+            ${HOURS.map(h => `<option value="${h}" ${s.start===h?'selected':''}>${h}</option>`).join('')}
+          </select>
+        </div>
+        <div class="time-group">
+          <div class="time-label">退勤時間</div>
+          <select class="form-select" onchange="setTime('${dateKey}','end',this.value)">
+            ${HOURS.map(h => `<option value="${h}" ${s.end===h?'selected':''}>${h}</option>`).join('')}
+          </select>
+        </div>
+      </div>` : ''}
+    `;
+    list.appendChild(div);
+  });
+}
+
+function setStatus(dateKey, status) {
+  state[dateKey].status = status;
+  const ym = dateKey.slice(0, 7);
+  renderDays(ym);
+}
+
+function setTime(dateKey, field, val) {
+  state[dateKey][field] = val;
+}
+
+function resetAll() {
+  if (!confirm('入力内容をリセットしますか？')) return;
+  const ym = document.getElementById('targetMonth').value;
+  if (ym) initMonth(ym);
+}
+
+function downloadExcel() {
+  const name = document.getElementById('staffName').value.trim();
+  const ym = document.getElementById('targetMonth').value;
+  if (!name) { alert('スタッフ名を入力してください'); return; }
+  if (!ym) { alert('対象月を選択してください'); return; }
+
+  const [y, m] = ym.split('-').map(Number);
+  const monthLabel = `${y}年${m}月`;
+
+  const rows = [
+    [`${monthLabel} シフト希望`, '', '', '', ''],
+    [`スタッフ名: ${name}`, '', '', '', ''],
+    [''],
+    ['日付', '曜日', '状態', '出勤時間', '退勤時間'],
+  ];
+
+  Object.keys(state).sort().forEach(dateKey => {
+    const d = new Date(dateKey + 'T00:00:00');
+    const day = d.getDate();
+    const week = WEEKS[d.getDay()];
+    const s = state[dateKey];
+    const statusLabel = s.status === 'work' ? '出勤' : s.status === 'off' ? '休み' : '未定';
+    rows.push([
+      `${m}/${day}`,
+      week,
+      statusLabel,
+      s.status === 'work' ? s.start : '',
+      s.status === 'work' ? s.end : '',
+    ]);
+  });
+
+  // 集計行
+  const workDays = Object.values(state).filter(s => s.status === 'work').length;
+  const offDays = Object.values(state).filter(s => s.status === 'off').length;
+  rows.push(['']);
+  rows.push(['出勤希望日数', `${workDays}日`, '', '休み希望日数', `${offDays}日`]);
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // 列幅
+  ws['!cols'] = [{ wch: 10 }, { wch: 6 }, { wch: 8 }, { wch: 10 }, { wch: 10 }];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'シフト希望');
+  XLSX.writeFile(wb, `シフト希望_${name}_${monthLabel}.xlsx`);
+}
+
+
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyAot-_uGcb_PS33eC0zTSjDvwJMCu17QBwH6SqrbVL1VJl1YvBBBy1eH3ZVbmFjr4K/exec';
+
+async function sendShift() {
+  const name = document.getElementById('staffName').value.trim();
+  const ym = document.getElementById('targetMonth').value;
+  if (!name) { alert('スタッフ名を入力してください'); return; }
+  if (!ym) { alert('対象月を選択してください'); return; }
+
+  const overlay = document.getElementById('sending-overlay');
+  overlay.style.display = 'flex';
+  document.getElementById('send-msg').textContent = '送信中...';
+
+  const [y, m] = ym.split('-').map(Number);
+  const WEEKS_LABEL = ['日','月','火','水','木','金','土'];
+  const shifts = Object.keys(state).sort().map(dateKey => {
+    const d = new Date(dateKey + 'T00:00:00');
+    const s = state[dateKey];
+    return {
+      date: `${m}/${d.getDate()}`,
+      week: WEEKS_LABEL[d.getDay()],
+      status: s.status === 'work' ? '出勤' : s.status === 'off' ? '休み' : '未定',
+      start: s.status === 'work' ? s.start : '',
+      end: s.status === 'work' ? s.end : '',
+    };
+  });
+
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, month: `${y}年${m}月`, shifts })
+    });
+    document.getElementById('send-msg').textContent = '✅ 送信完了！';
+    setTimeout(() => { overlay.style.display = 'none'; }, 2000);
+  } catch(e) {
+    document.getElementById('send-msg').textContent = '❌ 送信に失敗しました';
+    setTimeout(() => { overlay.style.display = 'none'; }, 2000);
+  }
+}
+
+// 初期化
+window.addEventListener('load', () => {
+  const next = getNextMonth();
+  const ym = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2,'0')}`;
+  document.getElementById('targetMonth').value = ym;
+  initMonth(ym);
+
+  document.getElementById('targetMonth').addEventListener('change', e => {
+    if (e.target.value) initMonth(e.target.value);
+  });
+});
+</script>
+</body>
+</html>
