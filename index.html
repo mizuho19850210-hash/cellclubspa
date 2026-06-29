@@ -139,7 +139,29 @@ const nowStr = () => new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minut
 const fmt = d => new Date(d).toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
 const fmtYen = n => '¥'+Number(n).toLocaleString();
 const uid = () => Math.random().toString(36).slice(2,9);
-const MENUS = ['ヘッドスパ','フェイシャル','ボディトリートメント','アロマ','カット','カラー','パーマ','トリートメント','その他'];
+const MENUS = [
+  'エクソソームスキンケアプログラム 40分',
+  'ウェルネスリチャージプログラム 60分',
+  'ウェルネスリチャージプログラム 80分',
+  'ウェルネスリチャージプログラム 100分',
+  'ウェルネスコンディショニングプログラム 60分',
+  'ウェルネスコンディショニングプログラム 80分',
+  'プレミアムトータルケアコース 120分',
+  'クラシックエステコース 40分',
+  'クラシックエステコース 60分',
+  'クラシックエステコース 80分',
+  'クラシックエステコース 120分',
+  'クラシックエステコース 150分',
+  '漢方よもぎ蒸し（通常）',
+  '漢方よもぎ蒸し（会員様）',
+  '漢方よもぎ蒸し（初回お試し）',
+  'ヘッドスパ（オプション）20分',
+  '足つぼ・リフレクソロジー（オプション）20分',
+  'SANTEケア（オプション）20分',
+  '指名料',
+  'ウェルネスコンディショニングプログラム 60分（キャンペーン）',
+  'その他',
+];
 const PAYMENT = ['現金','カード','PayPay','LINE Pay','その他'];
 
 const load = key => { try { const r = window.storage.get(key); return r ? JSON.parse(r.value) : null; } catch { return null; } };
