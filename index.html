@@ -19,7 +19,6 @@
   <script>
     // クラウド保存（Google Apps Script経由）+ ローカルキャッシュ
     const GAS_DATA_URL = 'https://script.google.com/macros/s/AKfycbyz4Msrp7TK4OhTPQCwV-osUbhX3XDyHUUNxDmVkOIVGrneQhDT8-pJq9RsCpqWHBy7/exec';
-
     async function cloudGet(key) {
       try {
         const res = await fetch(`${GAS_DATA_URL}?action=load&key=${encodeURIComponent(key)}`);
@@ -35,7 +34,6 @@
         return cached ? { value: cached } : null;
       }
     }
-
     async function cloudSet(key, value) {
       localStorage.setItem(key, value);
       try {
@@ -49,7 +47,6 @@
       }
       return { value };
     }
-
     window.storage = {
       get: cloudGet,
       set: cloudSet,
@@ -61,7 +58,6 @@
   </script>
   <script type="text/babel" data-presets="react">
 const { useState, useEffect, useRef } = React;
-
 const C = {
   bg: "#FAF8F5", surface: "#FFFFFF", border: "#E8E2DA",
   rose: "#C4788A", roseDark: "#A85E70", roseLight: "#F5E6EA",
@@ -70,7 +66,6 @@ const C = {
   amber: "#D4913A", amberLight: "#FBF0E0",
   red: "#C0544A", redLight: "#FBEAE9",
 };
-
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -159,7 +154,6 @@ tr:hover td{background:#FAF8F5;}
 .res-complete-box{background:#EAF3EC;border:1px solid #c0dfc9;border-radius:10px;padding:16px;margin-top:8px;font-size:13px;color:#3a6b4a;}
 @media(max-width:900px){.stats-row{grid-template-columns:1fr 1fr;}.form-row.cols3{grid-template-columns:1fr 1fr;}.sidebar{width:180px;min-width:180px;}}
 `;
-
 const todayStr = () => new Date().toISOString().slice(0,10);
 const nowStr = () => new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
 const fmt = d => new Date(d).toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
@@ -188,7 +182,6 @@ const MENUS = [
   'ウェルネスコンディショニングプログラム 60分（キャンペーン）',
   'その他',
 ];
-
 const MENU_PRICES = {
   'エクソソームスキンケアプログラム 40分': 8800,
   'ウェルネスリチャージプログラム 60分': 11800,
@@ -213,15 +206,13 @@ const MENU_PRICES = {
   'その他': 0,
 };
 const PAYMENT = ['現金','カード','PayPay','LINE Pay','その他'];
-
-const load = key => { try { const r = window.storage.get(key); return r ? JSON.parse(r.value) : null; } catch { return null; } };
-const save = (key,val) => { try { window.storage.set(key, JSON.stringify(val)); } catch {} };
-
+// ▼▼▼ 修正: window.storage.get/set は非同期(Promise)なので await して結果を使う ▼▼▼
+const load = async key => { try { const r = await window.storage.get(key); return r ? JSON.parse(r.value) : null; } catch { return null; } };
+const save = async (key,val) => { try { await window.storage.set(key, JSON.stringify(val)); } catch {} };
 const DEMO_STAFF = [{id:'s1',name:'田中 美咲',role:'セラピスト',color:'#C4788A'},{id:'s2',name:'佐藤 愛',role:'アシスタント',color:'#6B9E7A'}];
 const DEMO_CLIENTS = [{id:'c1',name:'山田 花子',kana:'ヤマダ ハナコ',phone:'090-1234-5678',birthday:'1990-03-15',allergies:'なし',note:'アロマはラベンダー系がお好み。',visits:[{id:'v1',date:'2026-06-20',menu:'ヘッドスパ',staffName:'田中 美咲',price:8000,memo:'60分コース',handover:'次回は肩のコリが強いためボディも提案',photos:[]}]},{id:'c2',name:'鈴木 恵',kana:'スズキ メグミ',phone:'080-8765-4321',birthday:'1985-11-02',allergies:'敏感肌',note:'圧は強めがお好み。',visits:[]}];
 const DEMO_RESERVATIONS = [{id:'r1',date:todayStr(),time:'10:00',clientName:'山田 花子',phone:'090-1234-5678',menu:'ヘッドスパ',staffName:'田中 美咲',duration:'60',memo:'',status:'確定',price:'8000'},{id:'r2',date:todayStr(),time:'13:00',clientName:'鈴木 恵',phone:'080-8765-4321',menu:'ボディトリートメント',staffName:'佐藤 愛',duration:'90',memo:'圧強め希望',status:'確定',price:'12000'}];
 const DEMO_SALES = [{id:'sa1',date:todayStr().slice(0,7)+'-15',clientName:'山田 花子',menu:'ヘッドスパ',staffName:'田中 美咲',amount:8000,payment:'現金',memo:''},{id:'sa2',date:todayStr().slice(0,7)+'-10',clientName:'鈴木 恵',menu:'フェイシャル',staffName:'佐藤 愛',amount:10000,payment:'カード',memo:''}];
-
 function App() {
   const [page,setPage]=useState('dashboard');
   const [loaded,setLoaded]=useState(false);
@@ -231,28 +222,52 @@ function App() {
   const [staff,setStaff]=useState([]);
   const [timecards,setTimecards]=useState({});
   const [clock,setClock]=useState(new Date());
-
+  // ▼▼▼ 修正: 5つのデータをすべて非同期で読み込み終わるまで待ってからstateにセットする ▼▼▼
   useEffect(()=>{
-    setSales(load('s2:sales')||DEMO_SALES);
-    setClients(load('s2:clients')||DEMO_CLIENTS);
-    setReservations(load('s2:reservations')||DEMO_RESERVATIONS);
-    setStaff(load('s2:staff')||DEMO_STAFF);
-    setTimecards(load('s2:timecards')||{});
-    setLoaded(true);
+    (async () => {
+      const [s,c,r,st,tc] = await Promise.all([
+        load('s2:sales'),
+        load('s2:clients'),
+        load('s2:reservations'),
+        load('s2:staff'),
+        load('s2:timecards'),
+      ]);
+      setSales(s||DEMO_SALES);
+      setClients(c||DEMO_CLIENTS);
+      setReservations(r||DEMO_RESERVATIONS);
+      setStaff(st||DEMO_STAFF);
+      setTimecards(tc||{});
+      setLoaded(true);
+    })();
   },[]);
-
   useEffect(()=>{if(loaded)save('s2:sales',sales);},[sales,loaded]);
   useEffect(()=>{if(loaded)save('s2:clients',clients);},[clients,loaded]);
   useEffect(()=>{if(loaded)save('s2:reservations',reservations);},[reservations,loaded]);
   useEffect(()=>{if(loaded)save('s2:staff',staff);},[staff,loaded]);
   useEffect(()=>{if(loaded)save('s2:timecards',timecards);},[timecards,loaded]);
+  // ▼▼▼ 追加: 15秒ごとにクラウドの最新データを取得し、他端末の更新を反映する ▼▼▼
+  useEffect(()=>{
+    if(!loaded) return;
+    const t = setInterval(async () => {
+      const [s,c,r,st,tc] = await Promise.all([
+        load('s2:sales'),
+        load('s2:clients'),
+        load('s2:reservations'),
+        load('s2:staff'),
+        load('s2:timecards'),
+      ]);
+      if(s) setSales(s);
+      if(c) setClients(c);
+      if(r) setReservations(r);
+      if(st) setStaff(st);
+      if(tc) setTimecards(tc);
+    }, 15000);
+    return () => clearInterval(t);
+  },[loaded]);
   useEffect(()=>{const t=setInterval(()=>setClock(new Date()),1000);return()=>clearInterval(t);},[]);
-
   if(!loaded) return React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',color:'#7A726A'}},'読み込み中…');
-
   const nav=[{id:'dashboard',icon:'◈',label:'ダッシュボード'},{id:'sales',icon:'¥',label:'売上・収入'},{id:'clients',icon:'♡',label:'お客様カルテ'},{id:'reservations',icon:'◷',label:'予約管理'},{id:'timecard',icon:'⏱',label:'タイムカード'}];
   const p={sales,setSales,clients,setClients,reservations,setReservations,staff,setStaff,timecards,setTimecards,clock};
-
   return (
     <>
       <style>{css}</style>
@@ -279,7 +294,6 @@ function App() {
     </>
   );
 }
-
 function Dashboard({sales,clients,reservations,staff,timecards,clock,setPage}){
   const td=todayStr(),month=td.slice(0,7);
   const monthSales=sales.filter(s=>s.date.startsWith(month));
@@ -300,13 +314,11 @@ function Dashboard({sales,clients,reservations,staff,timecards,clock,setPage}){
     <div className="card"><div className="card-title">今月の売上グラフ</div><MiniChart sales={sales} month={month}/></div>
   </>);
 }
-
 function MiniChart({sales,month}){
   const days=Array.from({length:31},(_,i)=>{const d=String(i+1).padStart(2,'0');const total=sales.filter(s=>s.date===`${month}-${d}`).reduce((a,b)=>a+Number(b.amount),0);return{d:i+1,total};});
   const max=Math.max(...days.map(x=>x.total),1);
   return(<div style={{display:'flex',alignItems:'flex-end',gap:3,height:80}}>{days.map(({d,total})=><div key={d} title={`${d}日: ${fmtYen(total)}`} style={{flex:1,background:total>0?'#C4788A':'#E8E2DA',height:`${Math.max((total/max)*100,total>0?6:2)}%`,borderRadius:'3px 3px 0 0',minWidth:4}}/>)}</div>);
 }
-
 function Timecard({staff,setStaff,timecards,setTimecards,clock}){
   const [tab,setTab]=useState('punch');
   const [viewStaff,setViewStaff]=useState(staff[0]?.id||null);
@@ -315,9 +327,7 @@ function Timecard({staff,setStaff,timecards,setTimecards,clock}){
   const [newStaff,setNewStaff]=useState({name:'',role:'',color:'#C4788A'});
   const COLORS=['#C4788A','#6B9E7A','#D4913A','#7A8EC4','#9B7AC4','#C47A6B'];
   const td=todayStr();
-
   const getStatus=staffId=>{const cards=(timecards[staffId]||[]).filter(c=>c.date===td);const last=cards[cards.length-1];if(!last)return'out';return last.punchIn&&!last.punchOut?'in':'out';};
-
   const punch=staffId=>{
     const now=nowStr(),status=getStatus(staffId);
     setTimecards(prev=>{
@@ -327,20 +337,15 @@ function Timecard({staff,setStaff,timecards,setTimecards,clock}){
       return{...prev,[staffId]:cards};
     });
   };
-
   const calcHours=(punchIn,punchOut)=>{if(!punchIn||!punchOut)return null;const[h1,m1]=punchIn.split(':').map(Number);const[h2,m2]=punchOut.split(':').map(Number);const mins=(h2*60+m2)-(h1*60+m1);if(mins<=0)return null;return`${Math.floor(mins/60)}h${mins%60>0?String(mins%60).padStart(2,'0')+'m':''}`;};
-
   const monthCards=staffId=>(timecards[staffId]||[]).filter(c=>c.date.startsWith(viewMonth));
-
   const addStaff=()=>{if(!newStaff.name)return;setStaff(p=>[...p,{...newStaff,id:uid()}]);setModal(false);setNewStaff({name:'',role:'',color:'#C4788A'});};
   const delStaff=id=>{if(!confirm('このスタッフを削除しますか？'))return;setStaff(p=>p.filter(s=>s.id!==id));if(viewStaff===id)setViewStaff(null);};
   const [editModal,setEditModal]=useState(false);
   const [editStaff,setEditStaffData]=useState(null);
   const openEdit=s=>{setEditStaffData({...s});setEditModal(true);};
   const saveEdit=()=>{if(!editStaff.name)return;setStaff(p=>p.map(s=>s.id===editStaff.id?editStaff:s));setEditModal(false);};
-
   const clockDisplay=clock.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-
   return(<>
     <div className="header-row"><div><h2 className="page-title">タイムカード</h2><p className="page-sub">出勤・退勤の打刻と勤務時間管理</p></div><button className="btn btn-primary" onClick={()=>setModal(true)}>＋ スタッフ追加</button></div>
     <div className="tab-row"><button className={`tab ${tab==='punch'?'active':''}`} onClick={()=>setTab('punch')}>打刻</button><button className={`tab ${tab==='history'?'active':''}`} onClick={()=>setTab('history')}>履歴・集計</button></div>
@@ -421,7 +426,6 @@ function Timecard({staff,setStaff,timecards,setTimecards,clock}){
     </div></div>}
   </>);
 }
-
 function Clients({clients,setClients,staff,setSales}){
   const [search,setSearch]=useState('');
   const [selected,setSelected]=useState(null);
@@ -430,10 +434,8 @@ function Clients({clients,setClients,staff,setSales}){
   const [form,setForm]=useState({name:'',kana:'',phone:'',birthday:'',allergies:'',note:''});
   const [visitForm,setVisitForm]=useState({date:todayStr(),menus:[],menu:'',staffName:'',price:'',handover:'',memo:'',photos:[]});
   const fileRef=useRef();
-
   const filtered=clients.filter(c=>c.name.includes(search)||(c.kana||'').includes(search)||(c.phone||'').includes(search));
   const clientData=selected?clients.find(c=>c.id===selected):null;
-
   const addClient=()=>{if(!form.name)return;const nc={...form,id:uid(),visits:[]};setClients(p=>[...p,nc]);setSelected(nc.id);setModal(false);setForm({name:'',kana:'',phone:'',birthday:'',allergies:'',note:''});};
   const delClient=id=>{setClients(p=>p.filter(c=>c.id!==id));setSelected(null);};
   const addVisit=()=>{
@@ -461,7 +463,6 @@ function Clients({clients,setClients,staff,setSales}){
   };
   const delVisit=visitId=>setClients(p=>p.map(c=>c.id===selected?{...c,visits:c.visits.filter(v=>v.id!==visitId)}:c));
   const handlePhotos=e=>{Array.from(e.target.files).forEach(f=>{const r=new FileReader();r.onload=ev=>setVisitForm(p=>({...p,photos:[...(p.photos||[]),ev.target.result]}));r.readAsDataURL(f);});};
-
   return(<>
     <div className="header-row"><div><h2 className="page-title">お客様カルテ</h2><p className="page-sub">名前・フリガナ・電話番号で検索できます</p></div><button className="btn btn-primary" onClick={()=>setModal(true)}>＋ 新規登録</button></div>
     <div style={{display:'flex',gap:20}}>
@@ -469,7 +470,7 @@ function Clients({clients,setClients,staff,setSales}){
         <input className="form-input" style={{width:'100%',marginBottom:12}} placeholder="🔍 名前 / フリガナ / 電話番号" value={search} onChange={e=>setSearch(e.target.value)}/>
         <div style={{fontSize:11,color:'#7A726A',marginBottom:8}}>{filtered.length}件</div>
         <div style={{maxHeight:'calc(100vh - 240px)',overflowY:'auto'}}>
-          {filtered.map(c=><div key={c.id} className={`client-row ${selected===c.id?'selected':''}`} onClick={()=>setSelected(c.id)}><div><div style={{fontWeight:600,fontSize:14}}>{c.name}</div><div style={{fontSize:12,color:'#7A726A'}}>{c.kana&&`${c.kana}  `}{c.phone}</div><div style={{fontSize:11,color:'#B8AFA8',marginTop:2}}>{(c.visits||[]).length}回来店</div></div><span style={{color:'#B8AFA8'}}>›</span></div>)}
+          {filtered.map(c=><div key={c.id} className={`client-row ${selected===c.id?'selected':''}`} onClick={()=>setSelected(c.id)}><div><div style={{fontWeight:600,fontSize:14}}>{c.name}</div><div style={{fontSize:12,color:'#7A726A'}}>{c.kana&&`${c.kana} `}{c.phone}</div><div style={{fontSize:11,color:'#B8AFA8',marginTop:2}}>{(c.visits||[]).length}回来店</div></div><span style={{color:'#B8AFA8'}}>›</span></div>)}
           {filtered.length===0&&<p style={{color:'#B8AFA8',fontSize:13,textAlign:'center',marginTop:24}}>見つかりません</p>}
         </div>
       </div>
@@ -534,20 +535,17 @@ function Clients({clients,setClients,staff,setSales}){
     </div></div>}
   </>);
 }
-
 function Reservations({reservations,setReservations,sales,setSales,clients,staff}){
   const [modal,setModal]=useState(false);
   const [completeModal,setCompleteModal]=useState(null);
   const [filterDate,setFilterDate]=useState(todayStr());
   const [form,setForm]=useState({date:todayStr(),time:'10:00',clientName:'',phone:'',menus:[],menu:'',staffName:'',duration:'60',memo:'',status:'確定',price:''});
   const [completeForm,setCompleteForm]=useState({price:'',payment:'現金',memo:''});
-
   const filtered=reservations.filter(r=>r.date===filterDate).sort((a,b)=>a.time.localeCompare(b.time));
   const add=()=>{if(!form.date||!form.clientName)return;const menuStr=(form.menus||[]).join('・')||form.menu||'';setReservations(p=>[...p,{...form,id:uid(),menu:menuStr}]);setModal(false);setForm({date:todayStr(),time:'10:00',clientName:'',phone:'',menus:[],menu:'',staffName:'',duration:'60',memo:'',status:'確定',price:''});};
   const openComplete=r=>{setCompleteForm({price:r.price||'',payment:'現金',memo:''});setCompleteModal(r);};
   const confirmComplete=()=>{const r=completeModal;setReservations(p=>p.map(x=>x.id===r.id?{...x,status:'完了'}:x));setSales(p=>[{id:uid(),date:r.date,clientName:r.clientName,menu:r.menu,staffName:r.staffName,amount:Number(completeForm.price)||0,payment:completeForm.payment,memo:completeForm.memo},...p]);setCompleteModal(null);};
   const STATUS_STYLE={'確定':'badge-green','完了':'badge-gray','キャンセル':'badge-red'};
-
   return(<>
     <div className="header-row"><div><h2 className="page-title">予約管理</h2><p className="page-sub">完了ボタンで売上に自動反映されます</p></div><button className="btn btn-primary" onClick={()=>setModal(true)}>＋ 予約を追加</button></div>
     <div style={{display:'flex',gap:12,marginBottom:20,alignItems:'center'}}>
@@ -588,7 +586,6 @@ function Reservations({reservations,setReservations,sales,setSales,clients,staff
     </div></div>}
   </>);
 }
-
 function Sales({sales,setSales,clients,staff}){
   const [modal,setModal]=useState(false);
   const [filterMonth,setFilterMonth]=useState(todayStr().slice(0,7));
@@ -596,19 +593,16 @@ function Sales({sales,setSales,clients,staff}){
   const filtered=sales.filter(s=>s.date.startsWith(filterMonth)).sort((a,b)=>b.date.localeCompare(a.date));
   const total=filtered.reduce((a,b)=>a+Number(b.amount),0);
   const add=()=>{if(!form.date||!form.amount)return;const menuStr=(form.menus||[]).join('・')||form.menu||'';setSales(p=>[{...form,id:uid(),amount:Number(form.amount),menu:menuStr},...p]);setModal(false);setForm({date:todayStr(),clientName:'',menus:[],menu:'',amount:'',payment:'現金',staffName:'',memo:''});};
-
   const today=new Date();
   const day=today.getDate();
   const reportType=day<=10?'中間報告①（10日）':day<=20?'中間報告②（20日）':'最終報告（月末）';
-
   const downloadReport=()=>{
     const [y,m]=filterMonth.split('-').map(Number);
     const monthLabel=`${y}年${m}月`;
     const wb=XLSX.utils.book_new();
-
     // シート1: 全売上実績
     const s1=[
-      [`${monthLabel} 売上レポート　${reportType}`,'','','','',''],
+      [`${monthLabel} 売上レポート ${reportType}`,'','','','',''],
       ['作成日',new Date().toLocaleDateString('ja-JP'),'','','',''],
       [''],
       ['日付','お客様','メニュー','担当','支払方法','金額'],
@@ -620,7 +614,6 @@ function Sales({sales,setSales,clients,staff}){
     const ws1=XLSX.utils.aoa_to_sheet(s1);
     ws1['!cols']=[{wch:12},{wch:14},{wch:16},{wch:12},{wch:10},{wch:10}];
     XLSX.utils.book_append_sheet(wb,ws1,'全売上実績');
-
     // シート2: スタッフ別売上
     const staffMap={};
     filtered.forEach(s=>{
@@ -630,7 +623,7 @@ function Sales({sales,setSales,clients,staff}){
       staffMap[name].total+=Number(s.amount);
     });
     const s2=[
-      [`${monthLabel} スタッフ別売上　${reportType}`,'',''],
+      [`${monthLabel} スタッフ別売上 ${reportType}`,'',''],
       [''],
       ['スタッフ名','件数','売上合計'],
       ...Object.entries(staffMap).sort((a,b)=>b[1].total-a[1].total).map(([name,v])=>[name,v.count,v.total]),
@@ -640,7 +633,6 @@ function Sales({sales,setSales,clients,staff}){
     const ws2=XLSX.utils.aoa_to_sheet(s2);
     ws2['!cols']=[{wch:16},{wch:8},{wch:12}];
     XLSX.utils.book_append_sheet(wb,ws2,'スタッフ別売上');
-
     // シート3: コース別売上
     const menuMap={};
     filtered.forEach(s=>{
@@ -650,7 +642,7 @@ function Sales({sales,setSales,clients,staff}){
       menuMap[menu].total+=Number(s.amount);
     });
     const s3=[
-      [`${monthLabel} コース別売上　${reportType}`,'',''],
+      [`${monthLabel} コース別売上 ${reportType}`,'',''],
       [''],
       ['コース名','件数','売上合計'],
       ...Object.entries(menuMap).sort((a,b)=>b[1].total-a[1].total).map(([menu,v])=>[menu,v.count,v.total]),
@@ -660,10 +652,8 @@ function Sales({sales,setSales,clients,staff}){
     const ws3=XLSX.utils.aoa_to_sheet(s3);
     ws3['!cols']=[{wch:20},{wch:8},{wch:12}];
     XLSX.utils.book_append_sheet(wb,ws3,'コース別売上');
-
     XLSX.writeFile(wb,`売上レポート_${monthLabel}_${reportType.split('（')[0]}.xlsx`);
   };
-
   return(<>
     <div className="header-row"><div><h2 className="page-title">売上・収入</h2><p className="page-sub">予約完了時に自動追加、手動入力も可能です</p></div>
       <div style={{display:'flex',gap:8}}>
@@ -705,7 +695,6 @@ function Sales({sales,setSales,clients,staff}){
     </div></div>}
   </>);
 }
-
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(App));
   </script>
