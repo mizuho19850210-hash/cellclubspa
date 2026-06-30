@@ -17,16 +17,42 @@
 <body>
   <div id="root"></div>
   <script>
-    // Simple storage using localStorage
+    // クラウド保存（Google Apps Script経由）+ ローカルキャッシュ
+    const GAS_DATA_URL = 'https://script.google.com/macros/s/AKfycbyz4Msrp7TK4OhTPQCwV-osUbhX3XDyHUUNxDmVkOIVGrneQhDT8-pJq9RsCpqWHBy7/exec';
+
+    async function cloudGet(key) {
+      try {
+        const res = await fetch(`${GAS_DATA_URL}?action=load&key=${encodeURIComponent(key)}`);
+        const json = await res.json();
+        if (json.data) {
+          localStorage.setItem(key, json.data);
+          return { value: json.data };
+        }
+        const cached = localStorage.getItem(key);
+        return cached ? { value: cached } : null;
+      } catch (e) {
+        const cached = localStorage.getItem(key);
+        return cached ? { value: cached } : null;
+      }
+    }
+
+    async function cloudSet(key, value) {
+      localStorage.setItem(key, value);
+      try {
+        await fetch(GAS_DATA_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ key, value }),
+        });
+      } catch (e) {
+        console.log('クラウド保存に失敗（後で再試行されます）', e);
+      }
+      return { value };
+    }
+
     window.storage = {
-      get: (key) => {
-        const v = localStorage.getItem(key);
-        return v ? { value: v } : null;
-      },
-      set: (key, value) => {
-        localStorage.setItem(key, value);
-        return { value };
-      },
+      get: cloudGet,
+      set: cloudSet,
       delete: (key) => {
         localStorage.removeItem(key);
         return { deleted: true };
