@@ -208,7 +208,13 @@ const MENU_PRICES = {
 const PAYMENT = ['現金','カード','PayPay','LINE Pay','その他'];
 // ▼▼▼ 修正: window.storage.get/set は非同期(Promise)なので await して結果を使う ▼▼▼
 const load = async key => { try { const r = await window.storage.get(key); return r ? JSON.parse(r.value) : null; } catch { return null; } };
-const save = async (key,val) => { try { await window.storage.set(key, JSON.stringify(val)); } catch {} };
+// クラウド保存中かどうかを管理するカウンター（保存中は自動更新で上書きしないようにする）
+let pendingSaves = 0;
+const save = async (key,val) => {
+  pendingSaves++;
+  try { await window.storage.set(key, JSON.stringify(val)); } catch {}
+  finally { pendingSaves = Math.max(0, pendingSaves - 1); }
+};
 const DEMO_STAFF = [{id:'s1',name:'田中 美咲',role:'セラピスト',color:'#C4788A'},{id:'s2',name:'佐藤 愛',role:'アシスタント',color:'#6B9E7A'}];
 const DEMO_CLIENTS = [{id:'c1',name:'山田 花子',kana:'ヤマダ ハナコ',phone:'090-1234-5678',birthday:'1990-03-15',allergies:'なし',note:'アロマはラベンダー系がお好み。',visits:[{id:'v1',date:'2026-06-20',menu:'ヘッドスパ',staffName:'田中 美咲',price:8000,memo:'60分コース',handover:'次回は肩のコリが強いためボディも提案',photos:[]}]},{id:'c2',name:'鈴木 恵',kana:'スズキ メグミ',phone:'080-8765-4321',birthday:'1985-11-02',allergies:'敏感肌',note:'圧は強めがお好み。',visits:[]}];
 const DEMO_RESERVATIONS = [{id:'r1',date:todayStr(),time:'10:00',clientName:'山田 花子',phone:'090-1234-5678',menu:'ヘッドスパ',staffName:'田中 美咲',duration:'60',memo:'',status:'確定',price:'8000'},{id:'r2',date:todayStr(),time:'13:00',clientName:'鈴木 恵',phone:'080-8765-4321',menu:'ボディトリートメント',staffName:'佐藤 愛',duration:'90',memo:'圧強め希望',status:'確定',price:'12000'}];
@@ -249,6 +255,7 @@ function App() {
   useEffect(()=>{
     if(!loaded) return;
     const t = setInterval(async () => {
+      if (pendingSaves > 0) return; // クラウド保存が進行中の間は自動更新で上書きしない
       const [s,c,r,st,tc] = await Promise.all([
         load('s2:sales'),
         load('s2:clients'),
@@ -256,6 +263,7 @@ function App() {
         load('s2:staff'),
         load('s2:timecards'),
       ]);
+      if (pendingSaves > 0) return; // 取得中に保存が始まった場合も上書きしない
       if(s) setSales(s);
       if(c) setClients(c);
       if(r) setReservations(r);
